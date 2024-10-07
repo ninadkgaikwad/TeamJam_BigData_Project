@@ -1,0 +1,235 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           elementFormDefault="qualified">
+
+    <!-- Root element for the entire dataset -->
+    <xs:element name="dataset">
+        <xs:complexType>
+            <xs:sequence>
+                <!-- User element -->
+                <xs:element name="user" maxOccurs="unbounded">
+                    <xs:complexType>
+                        <xs:sequence>
+                            <!-- User's recordings -->
+                            <xs:element name="recording" maxOccurs="unbounded">
+                                <xs:complexType>
+                                    <xs:sequence>
+                                        <!-- Date of the recording in yyyy-mm-dd format -->
+                                        <xs:element name="date" type="xs:date"/>
+
+                                        <!-- Metadata for each recording session -->
+                                        <xs:element name="metadata">
+                                            <xs:complexType>
+                                                <xs:sequence>
+                                                    <xs:element name="user_id" type="xs:string"/>
+                                                    <xs:element name="start_time_ms" type="xs:long"/>
+                                                    <xs:element name="end_time_ms" type="xs:long"/>
+                                                    <xs:element name="recording_length_ms" type="xs:long"/>
+                                                    <xs:element name="recording_id" type="xs:string"/>
+                                                </xs:sequence>
+                                            </xs:complexType>
+                                        </xs:element>
+
+                                        <!-- Sensors data -->
+                                        <xs:element name="sensors">
+                                            <xs:complexType>
+                                                <xs:sequence>
+                                                    <!-- Motion sensor data -->
+                                                    <xs:element name="motion" maxOccurs="unbounded">
+                                                        <xs:complexType>
+                                                            <xs:sequence>
+                                                                <xs:element name="timestamp" type="xs:long"/>
+                                                                <xs:element name="acceleration">
+                                                                    <xs:complexType>
+                                                                        <xs:sequence>
+                                                                            <xs:element name="x" type="xs:float"/>
+                                                                            <xs:element name="y" type="xs:float"/>
+                                                                            <xs:element name="z" type="xs:float"/>
+                                                                        </xs:sequence>
+                                                                    </xs:complexType>
+                                                                </xs:element>
+                                                                <xs:element name="gyroscope">
+                                                                    <xs:complexType>
+                                                                        <xs:sequence>
+                                                                            <xs:element name="x" type="xs:float"/>
+                                                                            <xs:element name="y" type="xs:float"/>
+                                                                            <xs:element name="z" type="xs:float"/>
+                                                                        </xs:sequence>
+                                                                    </xs:complexType>
+                                                                </xs:element>
+                                                                <xs:element name="magnetometer">
+                                                                    <xs:complexType>
+                                                                        <xs:sequence>
+                                                                            <xs:element name="x" type="xs:float"/>
+                                                                            <xs:element name="y" type="xs:float"/>
+                                                                            <xs:element name="z" type="xs:float"/>
+                                                                        </xs:sequence>
+                                                                    </xs:complexType>
+                                                                </xs:element>
+                                                                <xs:element name="orientation">
+                                                                    <xs:complexType>
+                                                                        <xs:sequence>
+                                                                            <xs:element name="w" type="xs:float"/>
+                                                                            <xs:element name="x" type="xs:float"/>
+                                                                            <xs:element name="y" type="xs:float"/>
+                                                                            <xs:element name="z" type="xs:float"/>
+                                                                        </xs:sequence>
+                                                                    </xs:complexType>
+                                                                </xs:element>
+                                                                <xs:element name="gravity">
+                                                                    <xs:complexType>
+                                                                        <xs:sequence>
+                                                                            <xs:element name="x" type="xs:float"/>
+                                                                            <xs:element name="y" type="xs:float"/>
+                                                                            <xs:element name="z" type="xs:float"/>
+                                                                        </xs:sequence>
+                                                                    </xs:complexType>
+                                                                </xs:element>
+                                                                <xs:element name="linear_acceleration">
+                                                                    <xs:complexType>
+                                                                        <xs:sequence>
+                                                                            <xs:element name="x" type="xs:float"/>
+                                                                            <xs:element name="y" type="xs:float"/>
+                                                                            <xs:element name="z" type="xs:float"/>
+                                                                        </xs:sequence>
+                                                                    </xs:complexType>
+                                                                </xs:element>
+                                                                <xs:element name="pressure" type="xs:float"/>
+                                                            </xs:sequence>
+                                                        </xs:complexType>
+                                                    </xs:element>
+
+                                                    <!-- WiFi data -->
+                                                    <xs:element name="wifi" maxOccurs="unbounded">
+                                                        <xs:complexType>
+                                                            <xs:sequence>
+                                                                <xs:element name="timestamp" type="xs:long"/>
+                                                                <xs:element name="wifi_networks" maxOccurs="unbounded">
+                                                                    <xs:complexType>
+                                                                        <xs:sequence>
+                                                                            <xs:element name="bssid" type="xs:string"/>
+                                                                            <xs:element name="ssid" type="xs:string"/>
+                                                                            <xs:element name="rssi" type="xs:float"/>
+                                                                            <xs:element name="frequency" type="xs:float"/>
+                                                                            <xs:element name="capabilities" type="xs:string"/>
+                                                                        </xs:sequence>
+                                                                    </xs:complexType>
+                                                                </xs:element>
+                                                            </xs:sequence>
+                                                        </xs:complexType>
+                                                    </xs:element>
+
+                                                    <!-- GPS data -->
+                                                    <xs:element name="gps" maxOccurs="unbounded">
+                                                        <xs:complexType>
+                                                            <xs:sequence>
+                                                                <xs:element name="timestamp" type="xs:long"/>
+                                                                <xs:element name="satellites" maxOccurs="unbounded">
+                                                                    <xs:complexType>
+                                                                        <xs:sequence>
+                                                                            <xs:element name="id" type="xs:int"/>
+                                                                            <xs:element name="snr" type="xs:float"/>
+                                                                            <xs:element name="azimuth" type="xs:float"/>
+                                                                            <xs:element name="elevation" type="xs:float"/>
+                                                                        </xs:sequence>
+                                                                    </xs:complexType>
+                                                                </xs:element>
+                                                            </xs:sequence>
+                                                        </xs:complexType>
+                                                    </xs:element>
+
+                                                    <!-- DeprCells.txt -->
+                                                    <xs:element name="depr_cells" maxOccurs="unbounded">
+                                                        <xs:complexType>
+                                                            <xs:sequence>
+                                                                <xs:element name="timestamp" type="xs:long"/>
+                                                                <xs:element name="network_type" type="xs:string"/>
+                                                                <xs:element name="cid" type="xs:string"/>
+                                                                <xs:element name="lac" type="xs:string"/>
+                                                                <xs:element name="dbm" type="xs:float"/>
+                                                                <xs:element name="mcc" type="xs:int"/>
+                                                                <xs:element name="mns" type="xs:int"/>
+                                                            </xs:sequence>
+                                                        </xs:complexType>
+                                                    </xs:element>
+
+                                                    <!-- Cells.txt -->
+                                                    <xs:element name="cells" maxOccurs="unbounded">
+                                                        <xs:complexType>
+                                                            <xs:sequence>
+                                                                <xs:element name="timestamp" type="xs:long"/>
+                                                                <xs:element name="entries" maxOccurs="unbounded">
+                                                                    <xs:complexType>
+                                                                        <xs:sequence>
+                                                                            <xs:element name="cell_type" type="xs:string"/> <!-- LTE, GSM, WCDMA -->
+                                                                            <xs:element name="signal_level" type="xs:int"/>
+                                                                            <xs:element name="signal_strength" type="xs:int"/>
+                                                                            <xs:element name="cell_id" type="xs:string"/>
+                                                                            <xs:element name="lac" type="xs:string" minOccurs="0"/> <!-- Optional for GSM -->
+                                                                            <xs:element name="mcc" type="xs:int"/>
+                                                                            <xs:element name="mnc" type="xs:int"/>
+                                                                            <xs:element name="tracking_area_code" type="xs:string" minOccurs="0"/> <!-- Optional -->
+                                                                            <xs:element name="psc" type="xs:int" minOccurs="0"/> <!-- Optional -->
+                                                                            <xs:element name="asu_level" type="xs:int" minOccurs="0"/> <!-- Optional -->
+                                                                            <xs:element name="dbm" type="xs:float" minOccurs="0"/> <!-- Optional -->
+                                                                        </xs:sequence>
+                                                                    </xs:complexType>
+                                                                </xs:element>
+                                                            </xs:sequence>
+                                                        </xs:complexType>
+                                                    </xs:element>
+
+                                                    <!-- Location.txt -->
+                                                    <xs:element name="location" maxOccurs="unbounded">
+                                                        <xs:complexType>
+                                                            <xs:sequence>
+                                                                <xs:element name="timestamp" type="xs:long"/>
+                                                                <xs:element name="accuracy" type="xs:float"/>
+                                                                <xs:element name="latitude" type="xs:float"/>
+                                                                <xs:element name="longitude" type="xs:float"/>
+                                                                <xs:element name="altitude" type="xs:float"/>
+                                                            </xs:sequence>
+                                                        </xs:complexType>
+                                                    </xs:element>
+
+                                                </xs:sequence>
+                                            </xs:complexType>
+                                        </xs:element>
+
+                                        <!-- Annotations for each recording session -->
+										<xs:element name="annotations" maxOccurs="unbounded">
+											<xs:complexType>
+												<xs:sequence>
+													<xs:element name="timestamp" type="xs:long"/>
+													<!-- Coarse label (e.g., Null=0, Still=1, Walking=2, Run=3, etc.) -->
+													<xs:element name="coarse_label" type="xs:int"/>
+													<!-- Fine label (e.g., Still;Stand;Outside=0, Run=7, Bus;Stand=11, etc.) -->
+													<xs:element name="fine_label" type="xs:string"/>
+													<!-- Road label (e.g., City=1, Motorway=2, Countryside=3, Dirt road=4, Null=0) -->
+													<xs:element name="road_label" type="xs:int"/>
+													<!-- Traffic label (e.g., Heavy traffic=1, null=0) -->
+													<xs:element name="traffic_label" type="xs:int"/>
+													<!-- Tunnels label (e.g., Tunnel=1, null=0) -->
+													<xs:element name="tunnels_label" type="xs:int"/>
+													<!-- Social label (e.g., Social=1, null=0) -->
+													<xs:element name="social_label" type="xs:int"/>
+													<!-- Food label (e.g., Eating=1, Drinking=2, Both=3, null=4) -->
+													<xs:element name="food_label" type="xs:int"/>
+												</xs:sequence>
+											</xs:complexType>
+										</xs:element>
+
+                                    </xs:sequence>
+                                </xs:complexType>
+                            </xs:element>
+                        </xs:sequence>
+                    </xs:complexType>
+                </xs:element>
+            </xs:sequence>
+        </xs:complexType>
+    </xs:element>
+
+</xs:schema>
+
+
+
