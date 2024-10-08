@@ -1,0 +1,216 @@
+{
+  "bsonType": "object",
+  "required": ["recording_id", "user_id", "recording_date", "sensors"],
+  "properties": {
+    "recording_id": {
+      "bsonType": "string",
+      "description": "Unique identifier for the data recording session (e.g., '120617')"
+    },
+    "user_id": {
+      "bsonType": "string",
+      "description": "Identifier for the user (e.g., User1, User2, User3)"
+    },
+    "recording_date": {
+      "bsonType": "date",
+      "description": "Date and time of recording in a human-readable format"
+    },
+    "recording_length_ms": {
+      "bsonType": "int",
+      "description": "Duration of the recording in milliseconds"
+    },
+    "phone_placement": {
+      "bsonType": "string",
+      "enum": ["Hand", "Bag", "Hips", "Torso"],
+      "description": "Phone placement on the user's body"
+    },
+    "activity_summary": {
+      "bsonType": "object",
+      "properties": {
+        "coarse_label": {
+          "bsonType": "string",
+          "enum": ["Still", "Walking", "Running", "Bike", "Car", "Bus", "Train", "Subway"],
+          "description": "Coarse activity label"
+        },
+        "fine_label": {
+          "bsonType": "string",
+          "enum": [
+            "Still;Stand;Outside", "Still;Stand;Inside", "Still;Sit;Outside",
+            "Still;Sit;Inside", "Walking;Outside", "Walking;Inside", "Run",
+            "Bike", "Car;Driver", "Car;Passenger", "Bus;Stand", "Bus;Sit",
+            "Train;Stand", "Train;Sit", "Subway;Stand", "Subway;Sit"
+          ],
+          "description": "Fine-grained activity label"
+        },
+        "road_label": {
+          "bsonType": "string",
+          "enum": ["City", "Motorway", "Countryside", "Dirt road", "Null"],
+          "description": "Road type label"
+        },
+        "traffic_label": {
+          "bsonType": "string",
+          "enum": ["Heavy traffic", "Null"],
+          "description": "Traffic label"
+        },
+        "social_label": {
+          "bsonType": "string",
+          "enum": ["Social Interaction", "Null"],
+          "description": "Social interaction label"
+        },
+        "food_label": {
+          "bsonType": "string",
+          "enum": ["Eating", "Drinking", "Both", "Null"],
+          "description": "Food activity label"
+        }
+      },
+      "description": "Summary of user activity during the session"
+    },
+    "sensors": {
+      "bsonType": "object",
+      "properties": {
+        "motion": {
+          "bsonType": "array",
+          "items": {
+            "bsonType": "object",
+            "properties": {
+              "timestamp": { "bsonType": "date" },
+              "acceleration": {
+                "bsonType": "object",
+                "properties": {
+                  "x": { "bsonType": "double" },
+                  "y": { "bsonType": "double" },
+                  "z": { "bsonType": "double" }
+                },
+                "description": "Acceleration data in m/s²"
+              },
+              "gyroscope": {
+                "bsonType": "object",
+                "properties": {
+                  "x": { "bsonType": "double" },
+                  "y": { "bsonType": "double" },
+                  "z": { "bsonType": "double" }
+                },
+                "description": "Gyroscope data in rad/s"
+              },
+              "magnetometer": {
+                "bsonType": "object",
+                "properties": {
+                  "x": { "bsonType": "double" },
+                  "y": { "bsonType": "double" },
+                  "z": { "bsonType": "double" }
+                },
+                "description": "Magnetometer data in μT"
+              },
+              "gravity": {
+                "bsonType": "object",
+                "properties": {
+                  "x": { "bsonType": "double" },
+                  "y": { "bsonType": "double" },
+                  "z": { "bsonType": "double" }
+                },
+                "description": "Gravity data in m/s²"
+              },
+              "linear_acceleration": {
+                "bsonType": "object",
+                "properties": {
+                  "x": { "bsonType": "double" },
+                  "y": { "bsonType": "double" },
+                  "z": { "bsonType": "double" }
+                },
+                "description": "Linear acceleration data in m/s²"
+              }
+            }
+          },
+          "description": "Motion sensor data, including acceleration, gyroscope, magnetometer, and gravity"
+        },
+        "ambient": {
+          "bsonType": "array",
+          "items": {
+            "bsonType": "object",
+            "properties": {
+              "timestamp": { "bsonType": "date" },
+              "light": { "bsonType": "double", "description": "Ambient light in Lux" },
+              "temperature": { "bsonType": "double", "description": "Ambient temperature in Celsius" }
+            }
+          },
+          "description": "Ambient sensor data collected during the session"
+        },
+        "battery": {
+          "bsonType": "array",
+          "items": {
+            "bsonType": "object",
+            "properties": {
+              "timestamp": { "bsonType": "date" },
+              "level": { "bsonType": "double", "description": "Battery level in percentage" },
+              "temperature": { "bsonType": "double", "description": "Battery temperature in Celsius" }
+            }
+          },
+          "description": "Battery sensor data collected during the session"
+        },
+        "location": {
+          "bsonType": "array",
+          "items": {
+            "bsonType": "object",
+            "properties": {
+              "timestamp": { "bsonType": "date" },
+              "latitude": { "bsonType": "double", "description": "Latitude in degrees" },
+              "longitude": { "bsonType": "double", "description": "Longitude in degrees" },
+              "altitude": { "bsonType": "double", "description": "Altitude in meters" },
+              "accuracy": { "bsonType": "double", "description": "Accuracy of GPS data in meters" }
+            }
+          },
+          "description": "Location data collected during the session"
+        },
+        "wifi_reception": {
+          "bsonType": "array",
+          "items": {
+            "bsonType": "object",
+            "properties": {
+              "timestamp": { "bsonType": "date" },
+              "SSID": { "bsonType": "string", "description": "WiFi SSID" },
+              "RSSI": { "bsonType": "double", "description": "Received Signal Strength Indicator in dBm" },
+              "frequency": { "bsonType": "double", "description": "WiFi frequency in MHz" },
+              "capabilities": { "bsonType": "string", "description": "WiFi capabilities" }
+            }
+          },
+          "description": "WiFi reception data collected during the session"
+        }
+      },
+      "description": "Sensor data collected during the recording session"
+    },
+    "labels": {
+      "bsonType": "array",
+      "items": {
+        "bsonType": "object",
+        "properties": {
+          "timestamp": { "bsonType": "date" },
+          "coarse_label": {
+            "bsonType": "string",
+            "enum": ["Still", "Walking", "Running", "Bike", "Car", "Bus", "Train", "Subway"],
+            "description": "Main activity label at the timestamp"
+          },
+          "road_label": {
+            "bsonType": "string",
+            "enum": ["City", "Motorway", "Countryside", "Dirt road"],
+            "description": "Road type label at the timestamp"
+          },
+          "traffic_label": {
+            "bsonType": "string",
+            "enum": ["Heavy traffic", "Null"],
+            "description": "Traffic label at the timestamp"
+          },
+          "food_label": {
+            "bsonType": "string",
+            "enum": ["Eating", "Drinking", "Both", "Null"],
+            "description": "Food activity label at the timestamp"
+          },
+          "social_label": {
+            "bsonType": "string",
+            "enum": ["Social Interaction", "Null"],
+            "description": "Social interaction label at the timestamp"
+          }
+        }
+      },
+      "description": "Activity labels recorded during the session with timestamps"
+    }
+  }
+}
