@@ -1,0 +1,30 @@
+{
+  "_id": "api001",
+  "recording_id": "recording001",
+  "sensor_location": "hand",
+  "api_confidence": [
+    {
+      "timestamp": 1609459200000,
+      "still_confidence": 95,
+      "on_foot_confidence": 30,
+      "walking_confidence": 25,
+      "running_confidence": 5,
+      "on_bicycle_confidence": 0,
+      "in_vehicle_confidence": 10,
+      "tilting_confidence": 50,
+      "unknown_confidence": 0
+    },
+    {
+      "timestamp": 1609459200100,
+      "still_confidence": 90,
+      "on_foot_confidence": 20,
+      "walking_confidence": 20,
+      "running_confidence": 3,
+      "on_bicycle_confidence": 0,
+      "in_vehicle_confidence": 5,
+      "tilting_confidence": 55,
+      "unknown_confidence": 0
+    }
+  ]
+}
+

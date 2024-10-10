@@ -1,0 +1,19 @@
+{
+  "_id": "recording001",
+  "user_id": "user123",
+  "date": "2024-10-08",
+  "start_time_ms": 1609459200000,
+  "end_time_ms": 1609462800000,
+  "recording_length_ms": 3600000,
+  "recording_id": "120617", 
+  "sensors": [
+    {
+      "sensor_type": "motion",
+      "sensor_data_id": "motion001"
+    },
+    {
+      "sensor_type": "gps",
+      "sensor_data_id": "gps001"
+    }
+  ]
+}

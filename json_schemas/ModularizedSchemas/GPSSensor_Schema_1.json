@@ -1,0 +1,46 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "GPSSensor",
+  "type": "object",
+  "properties": {
+    "_id": {
+      "type": "string",
+      "description": "The unique identifier for the GPS sensor data"
+    },
+    "recording_id": {
+      "type": "string",
+      "description": "Reference to the recording this sensor data belongs to"
+    },
+    "sensor_location": {
+      "type": "string",
+      "description": "The location where the sensor is placed (e.g., bag, hand, hips, torso)",
+      "enum": ["bag", "hand", "hips", "torso"]
+    },
+    "gps_data": {
+      "type": "array",
+      "description": "Array of GPS sensor readings over time",
+      "items": {
+        "type": "object",
+        "properties": {
+          "timestamp": { "type": "number", "description": "Timestamp in milliseconds" },
+          "satellite_info": {
+            "type": "array",
+            "description": "Array of visible satellites with SNR, Azimuth, and Elevation",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": { "type": "string", "description": "Satellite ID" },
+                "snr": { "type": "number", "description": "Signal to noise ratio" },
+                "azimuth": { "type": "number", "description": "Azimuth angle in degrees" },
+                "elevation": { "type": "number", "description": "Elevation angle in degrees" }
+              },
+              "required": ["id", "snr", "azimuth", "elevation"]
+            }
+          }
+        },
+        "required": ["timestamp", "satellite_info"]
+      }
+    }
+  },
+  "required": ["_id", "recording_id", "sensor_location", "gps_data"]
+}

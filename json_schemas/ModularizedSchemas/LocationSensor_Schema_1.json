@@ -1,0 +1,36 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "LocationSensor",
+  "type": "object",
+  "properties": {
+    "_id": {
+      "type": "string",
+      "description": "The unique identifier for the Location sensor data"
+    },
+    "recording_id": {
+      "type": "string",
+      "description": "Reference to the recording this sensor data belongs to"
+    },
+    "sensor_location": {
+      "type": "string",
+      "description": "The location where the sensor is placed (e.g., bag, hand, hips, torso)",
+      "enum": ["bag", "hand", "hips", "torso"]
+    },
+    "location_data": {
+      "type": "array",
+      "description": "Array of location sensor readings over time",
+      "items": {
+        "type": "object",
+        "properties": {
+          "timestamp": { "type": "number", "description": "Timestamp in milliseconds" },
+          "accuracy": { "type": "number", "description": "Accuracy of location in meters" },
+          "latitude": { "type": "number", "description": "Latitude in degrees" },
+          "longitude": { "type": "number", "description": "Longitude in degrees" },
+          "altitude": { "type": "number", "description": "Altitude in meters" }
+        },
+        "required": ["timestamp", "accuracy", "latitude", "longitude", "altitude"]
+      }
+    }
+  },
+  "required": ["_id", "recording_id", "sensor_location", "location_data"]
+}

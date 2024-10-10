@@ -1,0 +1,38 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "DeprCellsSensor",
+  "type": "object",
+  "properties": {
+    "_id": {
+      "type": "string",
+      "description": "The unique identifier for the DeprCells sensor data"
+    },
+    "recording_id": {
+      "type": "string",
+      "description": "Reference to the recording this sensor data belongs to"
+    },
+    "sensor_location": {
+      "type": "string",
+      "description": "The location where the sensor is placed (e.g., bag, hand, hips, torso)",
+      "enum": ["bag", "hand", "hips", "torso"]
+    },
+    "depr_cells_data": {
+      "type": "array",
+      "description": "Array of DeprCells sensor readings over time",
+      "items": {
+        "type": "object",
+        "properties": {
+          "timestamp": { "type": "number", "description": "Timestamp in milliseconds" },
+          "network_type": { "type": "string", "description": "Type of network (LTE, GSM, etc.)" },
+          "cid": { "type": "string", "description": "Cell ID" },
+          "lac": { "type": "string", "description": "Location Area Code" },
+          "dbm": { "type": "number", "description": "Signal strength in dBm" },
+          "mcc": { "type": "number", "description": "Mobile Country Code" },
+          "mns": { "type": "number", "description": "Mobile Network Code" }
+        },
+        "required": ["timestamp", "network_type", "cid", "lac", "dbm", "mcc", "mns"]
+      }
+    }
+  },
+  "required": ["_id", "recording_id", "sensor_location", "depr_cells_data"]
+}

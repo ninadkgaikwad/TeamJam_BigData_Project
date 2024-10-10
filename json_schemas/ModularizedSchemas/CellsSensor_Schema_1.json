@@ -1,0 +1,86 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CellsSensor",
+  "type": "object",
+  "properties": {
+    "_id": {
+      "type": "string",
+      "description": "The unique identifier for the Cells sensor data"
+    },
+    "recording_id": {
+      "type": "string",
+      "description": "Reference to the recording this sensor data belongs to"
+    },
+    "sensor_location": {
+      "type": "string",
+      "description": "The location where the sensor is placed (e.g., bag, hand, hips, torso)",
+      "enum": ["bag", "hand", "hips", "torso"]
+    },
+    "cells_data": {
+      "type": "array",
+      "description": "Array of Cells sensor readings over time",
+      "items": {
+        "type": "object",
+        "properties": {
+          "timestamp": { "type": "number", "description": "Timestamp in milliseconds" },
+          "number_of_entries": { "type": "number", "description": "Number of visible cells" },
+          "entries": {
+            "type": "array",
+            "description": "Array of cell details",
+            "items": {
+              "type": "object",
+              "oneOf": [
+                {
+                  "properties": {
+                    "cell_type": { "type": "string", "enum": ["LTE"], "description": "Type of cell (LTE)" },
+                    "signal_level": { "type": "number", "description": "Signal level" },
+                    "signal_strength": { "type": "number", "description": "Signal strength in dBm" },
+                    "cell_id": { "type": "string", "description": "Cell ID (28-bit)" },
+                    "mcc": { "type": "number", "description": "Mobile Country Code" },
+                    "mnc": { "type": "number", "description": "Mobile Network Code" },
+                    "tracking_area_code": { "type": "string", "description": "16-bit Tracking Area Code" },
+                    "asu_level": { "type": "number", "description": "ASU Level (optional)" },
+                    "dbm": { "type": "number", "description": "Signal strength in dBm (optional)" }
+                  },
+                  "required": ["cell_type", "signal_level", "signal_strength", "cell_id", "mcc", "mnc", "tracking_area_code"]
+                },
+                {
+                  "properties": {
+                    "cell_type": { "type": "string", "enum": ["GSM"], "description": "Type of cell (GSM)" },
+                    "signal_level": { "type": "number", "description": "Signal level" },
+                    "signal_strength": { "type": "number", "description": "Signal strength in dBm" },
+                    "cell_id": { "type": "string", "description": "Cell ID (16-bit)" },
+                    "lac": { "type": "string", "description": "Location Area Code (16-bit)" },
+                    "mcc": { "type": "number", "description": "Mobile Country Code" },
+                    "mnc": { "type": "number", "description": "Mobile Network Code" },
+                    "asu_level": { "type": "number", "description": "ASU Level (optional)" },
+                    "dbm": { "type": "number", "description": "Signal strength in dBm (optional)" }
+                  },
+                  "required": ["cell_type", "signal_level", "signal_strength", "cell_id", "lac", "mcc", "mnc"]
+                },
+                {
+                  "properties": {
+                    "cell_type": { "type": "string", "enum": ["WCDMA"], "description": "Type of cell (WCDMA)" },
+                    "signal_level": { "type": "number", "description": "Signal level" },
+                    "signal_strength": { "type": "number", "description": "Signal strength in dBm" },
+                    "cell_id": { "type": "string", "description": "Cell ID (28-bit)" },
+                    "lac": { "type": "string", "description": "Location Area Code (16-bit)" },
+                    "mcc": { "type": "number", "description": "Mobile Country Code" },
+                    "mnc": { "type": "number", "description": "Mobile Network Code" },
+                    "psc": { "type": "number", "description": "Primary Scrambling Code" },
+                    "asu_level": { "type": "number", "description": "ASU Level (optional)" },
+                    "dbm": { "type": "number", "description": "Signal strength in dBm (optional)" }
+                  },
+                  "required": ["cell_type", "signal_level", "signal_strength", "cell_id", "lac", "mcc", "mnc", "psc"]
+                }
+              ]
+            }
+          }
+        },
+        "required": ["timestamp", "number_of_entries", "entries"]
+      }
+    }
+  },
+  "required": ["_id", "recording_id", "sensor_location", "cells_data"]
+}
+

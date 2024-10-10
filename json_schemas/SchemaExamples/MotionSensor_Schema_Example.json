@@ -1,0 +1,62 @@
+{
+  "_id": "motion001",
+  "recording_id": "recording001",
+  "sensor_location": "hand",
+  "acceleration": [
+    {
+      "timestamp": 1609459200000,
+      "x": 0.1,
+      "y": 0.2,
+      "z": 9.8
+    },
+    {
+      "timestamp": 1609459200100,
+      "x": 0.15,
+      "y": 0.25,
+      "z": 9.7
+    }
+  ],
+  "gyroscope": [
+    {
+      "timestamp": 1609459200000,
+      "x": 0.01,
+      "y": 0.02,
+      "z": 0.03
+    }
+  ],
+  "magnetometer": [
+    {
+      "timestamp": 1609459200000,
+      "x": 30.5,
+      "y": 10.2,
+      "z": 42.3
+    }
+  ],
+  "orientation": [
+    {
+      "timestamp": 1609459200000,
+      "w": 1.0,
+      "x": 0.1,
+      "y": 0.1,
+      "z": 0.1
+    }
+  ],
+  "pressure": [
+    {
+      "timestamp": 1609459200000,
+      "value": 1013.25
+    }
+  ],
+  "altitude": [
+    {
+      "timestamp": 1609459200000,
+      "value": 50.0
+    }
+  ],
+  "temperature": [
+    {
+      "timestamp": 1609459200000,
+      "value": 22.5
+    }
+  ]
+}

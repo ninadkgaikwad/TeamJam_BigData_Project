@@ -1,0 +1,62 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "LabelSensor",
+  "type": "object",
+  "properties": {
+    "_id": {
+      "type": "string",
+      "description": "The unique identifier for the Label sensor data"
+    },
+    "recording_id": {
+      "type": "string",
+      "description": "Reference to the recording this sensor data belongs to"
+    },
+    "label_data": {
+      "type": "array",
+      "description": "Array of Label sensor readings over time",
+      "items": {
+        "type": "object",
+        "properties": {
+          "timestamp": { "type": "number", "description": "Timestamp in milliseconds" },
+          "coarse_label": {
+            "type": "number",
+            "description": "Coarse label (e.g., Null=0, Still=1, Walking=2, Run=3, Bike=4, Car=5, Bus=6, Train=7, Subway=8)",
+            "enum": [0, 1, 2, 3, 4, 5, 6, 7, 8]
+          },
+          "fine_label": {
+            "type": "number",
+            "description": "Fine label for more granular activity",
+            "enum": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18]
+          },
+          "road_label": {
+            "type": "number",
+            "description": "Road label (e.g., City=1, Motorway=2, Countryside=3, Dirt road=4, Null=0)",
+            "enum": [1, 2, 3, 4, 0]
+          },
+          "traffic_label": {
+            "type": "number",
+            "description": "Traffic label (e.g., Heavy traffic=1, null=0)",
+            "enum": [1, 0]
+          },
+          "tunnels_label": {
+            "type": "number",
+            "description": "Tunnels label (e.g., Tunnel=1, null=0)",
+            "enum": [1, 0]
+          },
+          "social_label": {
+            "type": "number",
+            "description": "Social label (e.g., Social=1, null=0)",
+            "enum": [1, 0]
+          },
+          "food_label": {
+            "type": "number",
+            "description": "Food label (e.g., Eating=1, Drinking=2, Both=3, null=4)",
+            "enum": [1, 2, 3, 4]
+          }
+        },
+        "required": ["timestamp", "coarse_label", "fine_label", "road_label", "traffic_label", "tunnels_label", "social_label", "food_label"]
+      }
+    }
+  },
+  "required": ["_id", "recording_id", "label_data"]
+}

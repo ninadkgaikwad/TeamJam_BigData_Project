@@ -1,0 +1,17 @@
+{
+  "_id": "ambient001",
+  "recording_id": "recording001",
+  "sensor_location": "torso",
+  "ambient_data": [
+    {
+      "timestamp": 1609459200000,
+      "lumix": 300,
+      "temperature": 22.5
+    },
+    {
+      "timestamp": 1609459200100,
+      "lumix": 320,
+      "temperature": 23.0
+    }
+  ]
+}

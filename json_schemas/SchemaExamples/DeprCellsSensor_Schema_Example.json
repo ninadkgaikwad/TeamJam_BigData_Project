@@ -1,0 +1,25 @@
+{
+  "_id": "deprcells001",
+  "recording_id": "recording001",
+  "sensor_location": "hips",
+  "depr_cells_data": [
+    {
+      "timestamp": 1609459200000,
+      "network_type": "LTE",
+      "cid": "12345",
+      "lac": "54321",
+      "dbm": -80,
+      "mcc": 234,
+      "mns": 10
+    },
+    {
+      "timestamp": 1609459200100,
+      "network_type": "WCDMA",
+      "cid": "67890",
+      "lac": "98765",
+      "dbm": -85,
+      "mcc": 310,
+      "mns": 12
+    }
+  ]
+}

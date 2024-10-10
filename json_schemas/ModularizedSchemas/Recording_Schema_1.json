@@ -1,0 +1,55 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Recording",
+  "type": "object",
+  "properties": {
+    "_id": {
+      "type": "string",
+      "description": "The unique identifier for the recording"
+    },
+    "user_id": {
+      "type": "string",
+      "description": "The unique identifier for the user associated with this recording"
+    },
+    "date": {
+      "type": "string",
+      "format": "date",
+      "description": "The start date of the recording in a human-readable format"
+    },
+    "start_time_ms": {
+      "type": "number",
+      "description": "First sample time in milliseconds"
+    },
+    "end_time_ms": {
+      "type": "number",
+      "description": "Last sample time in milliseconds"
+    },
+    "recording_length_ms": {
+      "type": "number",
+      "description": "Length of the recording in milliseconds"
+    },
+    "recording_id": {
+      "type": "string",
+      "description": "The name of the folder in which the data is stored (e.g., '120617')"
+    },
+    "sensors": {
+      "type": "array",
+      "description": "List of sensor data associated with the recording",
+      "items": {
+        "type": "object",
+        "properties": {
+          "sensor_type": {
+            "type": "string",
+            "description": "The type of the sensor (e.g., 'motion', 'gps')"
+          },
+          "sensor_data_id": {
+            "type": "string",
+            "description": "The unique identifier for the sensor data"
+          }
+        },
+        "required": ["sensor_type", "sensor_data_id"]
+      }
+    }
+  },
+  "required": ["_id", "user_id", "date", "start_time_ms", "end_time_ms", "recording_length_ms", "recording_id", "sensors"]
+}

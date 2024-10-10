@@ -1,0 +1,17 @@
+{
+  "_id": "battery001",
+  "recording_id": "recording001",
+  "sensor_location": "hand",
+  "battery_data": [
+    {
+      "timestamp": 1609459200000,
+      "battery_level": 90,
+      "temperature": 29.5
+    },
+    {
+      "timestamp": 1609459200100,
+      "battery_level": 89,
+      "temperature": 30.0
+    }
+  ]
+}
