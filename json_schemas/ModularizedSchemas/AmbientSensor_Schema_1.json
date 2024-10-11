@@ -1,0 +1,34 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AmbientSensor",
+  "type": "object",
+  "properties": {
+    "_id": {
+      "type": "string",
+      "description": "The unique identifier for the ambient sensor data"
+    },
+    "recording_id": {
+      "type": "string",
+      "description": "Reference to the recording this sensor data belongs to"
+    },
+    "sensor_location": {
+      "type": "string",
+      "description": "The location where the sensor is placed (e.g., bag, hand, hips, torso)",
+      "enum": ["bag", "hand", "hips", "torso"]
+    },
+    "ambient_data": {
+      "type": "array",
+      "description": "Array of ambient sensor readings over time",
+      "items": {
+        "type": "object",
+        "properties": {
+          "timestamp": { "type": "number", "description": "Timestamp in milliseconds" },
+          "lumix": { "type": "number", "description": "Lumix sensor value" },
+          "temperature": { "type": "number", "description": "Temperature in degrees Celsius" }
+        },
+        "required": ["timestamp", "lumix", "temperature"]
+      }
+    }
+  },
+  "required": ["_id", "recording_id", "sensor_location", "ambient_data"]
+}

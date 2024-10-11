@@ -1,0 +1,7 @@
+{
+  "_id": "user123",
+  "recordings": [
+    { "recording_id": "recording001", "date": "2024-10-08" },
+    { "recording_id": "recording002", "date": "2024-10-09" }
+  ]
+}

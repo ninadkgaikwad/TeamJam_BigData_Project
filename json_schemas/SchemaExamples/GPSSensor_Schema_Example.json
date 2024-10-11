@@ -1,0 +1,20 @@
+{
+  "_id": "gps001",
+  "recording_id": "recording001",
+  "sensor_location": "hand",
+  "gps_data": [
+    {
+      "timestamp": 1609459200000,
+      "satellite_info": [
+        { "id": "7", "snr": 12, "azimuth": 56, "elevation": 32 },
+        { "id": "30", "snr": 15, "azimuth": 82, "elevation": 70 }
+      ]
+    },
+    {
+      "timestamp": 1609459200100,
+      "satellite_info": [
+        { "id": "7", "snr": 14, "azimuth": 50, "elevation": 30 }
+      ]
+    }
+  ]
+}

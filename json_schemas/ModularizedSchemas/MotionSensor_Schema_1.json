@@ -1,0 +1,142 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "MotionSensorWithTimestamps",
+  "type": "object",
+  "properties": {
+    "_id": {
+      "type": "string",
+      "description": "The unique identifier for the motion sensor data"
+    },
+    "recording_id": {
+      "type": "string",
+      "description": "Reference to the recording this sensor data belongs to"
+    },
+    "sensor_location": {
+      "type": "string",
+      "description": "The location where the sensor is placed (e.g., bag, hand, hips, torso)",
+      "enum": ["bag", "hand", "hips", "torso"]
+    },
+    "acceleration": {
+      "type": "array",
+      "description": "Array of acceleration readings over time",
+      "items": {
+        "type": "object",
+        "properties": {
+          "timestamp": { "type": "number", "description": "Timestamp in milliseconds" },
+          "x": { "type": "number", "description": "Acceleration in X direction (m/s^2)" },
+          "y": { "type": "number", "description": "Acceleration in Y direction (m/s^2)" },
+          "z": { "type": "number", "description": "Acceleration in Z direction (m/s^2)" }
+        },
+        "required": ["timestamp", "x", "y", "z"]
+      }
+    },
+    "gyroscope": {
+      "type": "array",
+      "description": "Array of gyroscope readings over time",
+      "items": {
+        "type": "object",
+        "properties": {
+          "timestamp": { "type": "number", "description": "Timestamp in milliseconds" },
+          "x": { "type": "number", "description": "Gyroscope in X direction (rad/s)" },
+          "y": { "type": "number", "description": "Gyroscope in Y direction (rad/s)" },
+          "z": { "type": "number", "description": "Gyroscope in Z direction (rad/s)" }
+        },
+        "required": ["timestamp", "x", "y", "z"]
+      }
+    },
+    "magnetometer": {
+      "type": "array",
+      "description": "Array of magnetometer readings over time",
+      "items": {
+        "type": "object",
+        "properties": {
+          "timestamp": { "type": "number", "description": "Timestamp in milliseconds" },
+          "x": { "type": "number", "description": "Magnetometer in X direction (μT)" },
+          "y": { "type": "number", "description": "Magnetometer in Y direction (μT)" },
+          "z": { "type": "number", "description": "Magnetometer in Z direction (μT)" }
+        },
+        "required": ["timestamp", "x", "y", "z"]
+      }
+    },
+    "orientation": {
+      "type": "array",
+      "description": "Array of orientation quaternion readings over time",
+      "items": {
+        "type": "object",
+        "properties": {
+          "timestamp": { "type": "number", "description": "Timestamp in milliseconds" },
+          "w": { "type": "number", "description": "Orientation quaternion component w" },
+          "x": { "type": "number", "description": "Orientation quaternion component x" },
+          "y": { "type": "number", "description": "Orientation quaternion component y" },
+          "z": { "type": "number", "description": "Orientation quaternion component z" }
+        },
+        "required": ["timestamp", "w", "x", "y", "z"]
+      }
+    },
+    "gravity": {
+      "type": "array",
+      "description": "Array of gravity readings over time",
+      "items": {
+        "type": "object",
+        "properties": {
+          "timestamp": { "type": "number", "description": "Timestamp in milliseconds" },
+          "x": { "type": "number", "description": "Gravity in X direction (m/s^2)" },
+          "y": { "type": "number", "description": "Gravity in Y direction (m/s^2)" },
+          "z": { "type": "number", "description": "Gravity in Z direction (m/s^2)" }
+        },
+        "required": ["timestamp", "x", "y", "z"]
+      }
+    },
+    "linear_acceleration": {
+      "type": "array",
+      "description": "Array of linear acceleration readings over time",
+      "items": {
+        "type": "object",
+        "properties": {
+          "timestamp": { "type": "number", "description": "Timestamp in milliseconds" },
+          "x": { "type": "number", "description": "Linear acceleration in X direction (m/s^2)" },
+          "y": { "type": "number", "description": "Linear acceleration in Y direction (m/s^2)" },
+          "z": { "type": "number", "description": "Linear acceleration in Z direction (m/s^2)" }
+        },
+        "required": ["timestamp", "x", "y", "z"]
+      }
+    },
+    "pressure": {
+      "type": "array",
+      "description": "Array of pressure readings over time",
+      "items": {
+        "type": "object",
+        "properties": {
+          "timestamp": { "type": "number", "description": "Timestamp in milliseconds" },
+          "value": { "type": "number", "description": "Pressure in hPa" }
+        },
+        "required": ["timestamp", "value"]
+      }
+    },
+    "altitude": {
+      "type": "array",
+      "description": "Array of altitude readings over time",
+      "items": {
+        "type": "object",
+        "properties": {
+          "timestamp": { "type": "number", "description": "Timestamp in milliseconds" },
+          "value": { "type": "number", "description": "Altitude derived from the pressure sensor (m)" }
+        },
+        "required": ["timestamp", "value"]
+      }
+    },
+    "temperature": {
+      "type": "array",
+      "description": "Array of temperature readings over time",
+      "items": {
+        "type": "object",
+        "properties": {
+          "timestamp": { "type": "number", "description": "Timestamp in milliseconds" },
+          "value": { "type": "number", "description": "Temperature derived from the pressure sensor (°C)" }
+        },
+        "required": ["timestamp", "value"]
+      }
+    }
+  },
+  "required": ["_id", "recording_id", "sensor_location", "acceleration", "gyroscope", "magnetometer", "orientation", "gravity", "linear_acceleration", "pressure", "altitude", "temperature"]
+}

@@ -1,0 +1,21 @@
+{
+  "_id": "location001",
+  "recording_id": "recording001",
+  "sensor_location": "bag",
+  "location_data": [
+    {
+      "timestamp": 1609459200000,
+      "accuracy": 5.0,
+      "latitude": 51.509865,
+      "longitude": -0.118092,
+      "altitude": 15.0
+    },
+    {
+      "timestamp": 1609459200100,
+      "accuracy": 6.0,
+      "latitude": 51.509870,
+      "longitude": -0.118095,
+      "altitude": 14.5
+    }
+  ]
+}

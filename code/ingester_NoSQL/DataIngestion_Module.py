@@ -1,0 +1,694 @@
+##########################################################################################################################################
+##########################################################################################################################################
+# Data Ingestion Module
+##########################################################################################################################################
+##########################################################################################################################################
+
+##########################################################################################################################################
+# Import Required Modules
+##########################################################################################################################################
+
+import os
+from datetime import datetime
+
+##########################################################################################################################################
+# Import Custom Modules
+##########################################################################################################################################
+from DataParser_Module import *
+
+##########################################################################################################################################
+# Function: To create Dictionary Document for User Collection based on developed JSON Schema
+##########################################################################################################################################
+def create_user_recordings_json(base_path):
+    """
+    Create a dictionary representing user recordings structured according to the provided JSON schema.
+    
+    Args:
+        base_path (str): The path where the user folders are located. Inside each user folder are recording folders named with the format 'ddmmyy'.
+        
+    Returns:
+        dict: A dictionary structured according to the given JSON schema, with _id as the user folder name, 
+              recording_id as the recording folder name, and the date derived from the recording folder name.
+              
+    Example:
+        base_path = "/path/to/data"
+        result = create_user_recordings_json(base_path)
+        
+        # Example folder structure:
+        # /path/to/data/User1/120617/
+        # /path/to/data/User1/130617/
+        # /path/to/data/User2/110617/
+        
+        # The function will return:
+        # {
+        #     "_id": "User1",
+        #     "recordings": [
+        #         {
+        #             "recording_id": "120617",
+        #             "date": "2017-06-12"
+        #         },
+        #         {
+        #             "recording_id": "130617",
+        #             "date": "2017-06-13"
+        #         }
+        #     ]
+        # }
+    """
+    user_recordings = []
+    
+    # Iterate through user folders
+    for user_folder in os.listdir(base_path):
+        user_path = os.path.join(base_path, user_folder)
+        
+        if os.path.isdir(user_path):  # Ensure it is a directory (user folder)
+            recordings = []
+            
+            # Iterate through each recording folder inside the user folder
+            for recording_folder in os.listdir(user_path):
+                recording_path = os.path.join(user_path, recording_folder)
+                
+                if os.path.isdir(recording_path):  # Ensure it is a directory (recording folder)
+                    try:
+                        # Convert the recording folder name (ddmmyy) to a date
+                        date = datetime.strptime(recording_folder, '%d%m%y').strftime('%Y-%m-%d')
+                        
+                        # Append the recording data to the list
+                        recordings.append({
+                            "recording_id": user_folder+ "-" +recording_folder,
+                            "date": date
+                        })
+                    except ValueError:
+                        # If the folder name does not match the ddmmyy format, skip it
+                        continue
+            
+            # Add the user recordings to the main list
+            user_recordings.append({
+                "_id": user_folder,
+                "recordings": recordings
+            })
+    
+    return user_recordings
+    
+##########################################################################################################################################
+# Function: To create Dictionary Document for Recordings Collection based on developed JSON Schema
+##########################################################################################################################################
+def create_recordings_json_with_metadata(base_path):
+    """
+    Create a dictionary representing recordings structured according to the provided JSON schema.
+    
+    Args:
+        base_path (str): The path where the user folders are located. Inside each user folder are recording folders named with the format 'ddmmyy'.
+        
+    Returns:
+        list: A list of dictionaries structured according to the given JSON schema, with _id as userfoldername-recordingfoldername,
+              user_id extracted from the folder name, and the remaining fields extracted from the 00inf.txt file.
+              The sensors field is populated with sensor_type and sensor_data_id fields based on files in the recording folder.
+              
+    Example:
+        base_path = "/path/to/data"
+        result = create_recordings_json_with_metadata(base_path)
+    """
+    all_recordings = []
+    
+    # Iterate through user folders
+    for user_folder in os.listdir(base_path):
+        user_path = os.path.join(base_path, user_folder)
+        
+        if os.path.isdir(user_path):  # Ensure it is a directory (user folder)
+            
+            # Iterate through each recording folder inside the user folder
+            for recording_folder in os.listdir(user_path):
+                recording_path = os.path.join(user_path, recording_folder)
+                
+                if os.path.isdir(recording_path):  # Ensure it is a directory (recording folder)
+                    try:
+                        # Extract metadata from the 00inf.txt file
+                        metadata = parse_recording_info_file(recording_path)
+                        
+                        # Construct the _id and user_id from the folder names
+                        recording_id = f"{user_folder}-{recording_folder}"
+                        user_id = user_folder
+                        
+                        # Convert the recording folder name (ddmmyy) to a date
+                        date = datetime.strptime(recording_folder, '%d%m%y').strftime('%Y-%m-%d')
+                        
+                        # Initialize the list for sensors
+                        sensors = []
+                        
+                        # Iterate over files in the recording folder to populate sensors
+                        for sensor_file in os.listdir(recording_path):
+                            # Check if the file starts with Bag, Hand, Hips, Torso, or Label and does not include 'labels'
+                            if sensor_file.startswith(('Bag', 'Hand', 'Hips', 'Torso', 'Label')) and not sensor_file.startswith('labels'):
+                                sensor_type = os.path.splitext(sensor_file)[0]  # Remove the extension
+                                sensor_data_id = f"{user_folder}-{recording_folder}-{sensor_type}"
+                                
+                                # Add to the sensors list
+                                sensors.append({
+                                    "sensor_type": sensor_type,
+                                    "sensor_data_id": sensor_data_id
+                                })
+                        
+                        # Construct the final dictionary for this recording
+                        recording_json = {
+                            "_id": recording_id,
+                            "user_id": user_id,
+                            "date": date,
+                            "start_time_ms": metadata.get('start_time_ms', None),
+                            "end_time_ms": metadata.get('end_time_ms', None),
+                            "recording_length_ms": metadata.get('recording_length_ms', None),
+                            "recording_id": metadata.get('recording_id', recording_folder),
+                            "sensors": sensors  # Sensors list added here
+                        }
+                        
+                        # Append to the list of all recordings
+                        all_recordings.append(recording_json)
+                        
+                    except ValueError:
+                        # If the folder name does not match the ddmmyy format or 00inf.txt file has issues, skip it
+                        continue
+    
+    return all_recordings
+
+##########################################################################################################################################
+# Function: To create Dictionary Document for Ambient Sensor Collection based on developed JSON Schema
+##########################################################################################################################################
+def create_ambient_sensor_json(base_path):
+    """
+    Create a dictionary representing ambient sensor data structured according to the provided JSON schema.
+    
+    Args:
+        base_path (str): The path where the user folders are located. Inside each user folder are recording folders 
+                         that contain ambient sensor files like Bag_Ambient.txt, Hand_Ambient.txt, etc.
+        
+    Returns:
+        list: A list of dictionaries structured according to the given JSON schema for ambient sensors.
+              
+    Example:
+        base_path = "/path/to/data"
+        result = create_ambient_sensor_json(base_path)
+    """
+    all_ambient_sensors = []
+    
+    # Iterate through user folders
+    for user_folder in os.listdir(base_path):
+        user_path = os.path.join(base_path, user_folder)
+        
+        if os.path.isdir(user_path):  # Ensure it is a directory (user folder)
+            
+            # Iterate through each recording folder inside the user folder
+            for recording_folder in os.listdir(user_path):
+                recording_path = os.path.join(user_path, recording_folder)
+                
+                if os.path.isdir(recording_path):  # Ensure it is a directory (recording folder)
+                    
+                    # Iterate over files in the recording folder to check for ambient sensor files
+                    for sensor_file in os.listdir(recording_path):
+                        if sensor_file.startswith(('Bag_Ambient', 'Hand_Ambient', 'Hips_Ambient', 'Torso_Ambient')):
+                            # Parse the ambient sensor file
+                            sensor_file_path = os.path.join(recording_path, sensor_file)
+                            ambient_data = parse_ambient_sensor_file(sensor_file_path)
+                            
+                            # Construct sensor type, sensor location, and sensor data ID
+                            sensor_type = os.path.splitext(sensor_file)[0]  # Remove the extension
+                            sensor_location = sensor_type.split('_')[0].lower()  # Get the location (bag, hand, etc.)
+                            sensor_data_id = f"{user_folder}-{recording_folder}-{sensor_type}"
+                            recording_id = f"{user_folder}-{recording_folder}"
+                            
+                            # Construct the JSON structure for this sensor
+                            ambient_sensor_json = {
+                                "_id": sensor_data_id,
+                                "recording_id": recording_id,
+                                "sensor_location": sensor_location,
+                                "ambient_data": ambient_data
+                            }
+                            
+                            # Append to the list of all ambient sensors
+                            all_ambient_sensors.append(ambient_sensor_json)
+    
+    return all_ambient_sensors
+
+##########################################################################################################################################
+# Function: To create Dictionary Document for Battery Sensor Collection based on developed JSON Schema
+##########################################################################################################################################
+def create_battery_json(base_path):
+    """
+    Create a dictionary representing the battery sensor data for all users and recordings.
+    
+    Args:
+        base_path (str): The base path where the user folders are located.
+        
+    Returns:
+        list: List of dictionaries structured according to the provided JSON schema for battery sensor data.
+    """
+    all_battery_data = []
+
+    # Iterate through user folders
+    for user_folder in os.listdir(base_path):
+        user_path = os.path.join(base_path, user_folder)
+        
+        if os.path.isdir(user_path):  # Ensure it is a directory (user folder)
+            
+            # Iterate through each recording folder inside the user folder
+            for recording_folder in os.listdir(user_path):
+                recording_path = os.path.join(user_path, recording_folder)
+                
+                if os.path.isdir(recording_path):  # Ensure it is a directory (recording folder)
+                    
+                    # Look for any battery sensor files (Bag_Battery, Hand_Battery, etc.)
+                    for file_name in os.listdir(recording_path):
+                        if 'Battery' in file_name and file_name.endswith('.txt'):
+                            try:
+                                # Parse battery sensor file
+                                battery_file_path = os.path.join(recording_path, file_name)
+                                battery_data = parse_battery_sensor_file(battery_file_path)
+                                
+                                # Construct the _id, recording_id, and sensor_location
+                                recording_id = f"{user_folder}-{recording_folder}"
+                                sensor_location = file_name.split('_')[0].lower()  # Extract sensor location from file name
+                                
+                                # Create the final JSON structure for this battery sensor
+                                battery_json = {
+                                    "_id": f"{user_folder}-{recording_folder}-{file_name.split('.')[0]}",
+                                    "recording_id": recording_id,
+                                    "sensor_location": sensor_location,
+                                    "battery_data": battery_data
+                                }
+                                
+                                # Append to the list of all battery data
+                                all_battery_data.append(battery_json)
+                            
+                            except Exception as e:
+                                print(f"Error processing {battery_file_path}: {e}")
+                                continue
+    
+    return all_battery_data
+ 
+##########################################################################################################################################
+# Function: To create Dictionary Document for API Sensor Collection based on developed JSON Schema
+##########################################################################################################################################
+def create_api_recording_json(base_path):
+    """
+    Create a dictionary representing API sensor recordings structured according to the provided JSON schema.
+    
+    Args:
+        base_path (str): The path where the user folders are located. Inside each user folder are recording folders named with the format 'ddmmyy'.
+        
+    Returns:
+        list: A list of dictionaries structured according to the given JSON schema, with _id as userfoldername-recordingfoldername-APIfilename,
+              recording_id as userfoldername-recordingfoldername, and the API data from the parser.
+    """
+    all_recordings = []
+    
+    # Iterate through user folders
+    for user_folder in os.listdir(base_path):
+        user_path = os.path.join(base_path, user_folder)
+        
+        if os.path.isdir(user_path):  # Ensure it is a directory (user folder)
+            
+            # Iterate through each recording folder inside the user folder
+            for recording_folder in os.listdir(user_path):
+                recording_path = os.path.join(user_path, recording_folder)
+                
+                if os.path.isdir(recording_path):  # Ensure it is a directory (recording folder)
+                    
+                    # Search for API files in the recording folder
+                    for sensor_file in os.listdir(recording_path):
+                        if sensor_file.endswith("_API.txt"):  # Only process API sensor files
+                            sensor_location = sensor_file.split("_")[0].lower()  # Extract sensor location (bag, hand, hips, torso)
+                            sensor_file_path = os.path.join(recording_path, sensor_file)
+                            
+                            # Parse the API sensor data
+                            api_data = parse_api_file(sensor_file_path)
+                            
+                            # Create the recording ID and _id
+                            recording_id = f"{user_folder}-{recording_folder}"
+                            api_id = f"{recording_id}-{sensor_file}"
+                            
+                            # Construct the final dictionary for this API sensor
+                            api_recording_json = {
+                                "_id": api_id,
+                                "recording_id": recording_id,
+                                "sensor_location": sensor_location,
+                                "api_confidence": api_data
+                            }
+                            
+                            # Append to the list of all API sensor recordings
+                            all_recordings.append(api_recording_json)
+    
+    return all_recordings
+    
+##########################################################################################################################################
+# Function: To create Dictionary Document for Location Sensor Collection based on developed JSON Schema
+##########################################################################################################################################
+def create_location_sensor_json(base_path):
+    """
+    Create a dictionary representing location sensor data structured according to the provided JSON schema.
+    
+    Args:
+        base_path (str): The path where the user folders are located. Inside each user folder are recording folders named with the format 'ddmmyy'.
+        
+    Returns:
+        list: A list of dictionaries structured according to the JSON schema.
+    """
+    all_location_sensors = []
+    
+    # Iterate through user folders
+    for user_folder in os.listdir(base_path):
+        user_path = os.path.join(base_path, user_folder)
+        
+        if os.path.isdir(user_path):  # Ensure it is a directory (user folder)
+            
+            # Iterate through each recording folder inside the user folder
+            for recording_folder in os.listdir(user_path):
+                recording_path = os.path.join(user_path, recording_folder)
+                
+                if os.path.isdir(recording_path):  # Ensure it is a directory (recording folder)
+                    # Look for the Location.txt file (replace with actual naming convention as needed)
+                    for file_name in os.listdir(recording_path):
+                        if file_name.endswith('_Location.txt'):  # Assuming the file follows this pattern
+                            location_file_path = os.path.join(recording_path, file_name)
+                            location_data = parse_location_file(location_file_path)
+                            
+                            # Construct the _id and recording_id from the folder names
+                            recording_id = f"{user_folder}-{recording_folder}"
+                            sensor_location = file_name.split('_')[0].lower()  # Assuming Bag_Location.txt -> 'bag'
+                            
+                            # Construct the final dictionary for this location sensor
+                            location_sensor_json = {
+                                "_id": f"{user_folder}-{recording_folder}-{file_name}",
+                                "recording_id": recording_id,
+                                "sensor_location": sensor_location,
+                                "location_data": location_data
+                            }
+                            
+                            # Append to the list of all location sensors
+                            all_location_sensors.append(location_sensor_json)
+    
+    return all_location_sensors
+    
+##########################################################################################################################################
+# Function: To create Dictionary Document for Motion Sensor Collection based on developed JSON Schema
+##########################################################################################################################################
+def create_motion_sensor_json(base_path):
+    """
+    Create a dictionary representing motion sensor data structured according to the provided JSON schema.
+    
+    Args:
+        base_path (str): The path where the user folders are located. Inside each user folder are recording folders named with the format 'ddmmyy'.
+        
+    Returns:
+        list: A list of dictionaries structured according to the JSON schema.
+    """
+    all_motion_sensors = []
+    
+    # Iterate through user folders
+    for user_folder in os.listdir(base_path):
+        user_path = os.path.join(base_path, user_folder)
+        
+        if os.path.isdir(user_path):  # Ensure it is a directory (user folder)
+            
+            # Iterate through each recording folder inside the user folder
+            for recording_folder in os.listdir(user_path):
+                recording_path = os.path.join(user_path, recording_folder)
+                
+                if os.path.isdir(recording_path):  # Ensure it is a directory (recording folder)
+                    # Look for the Motion.txt file (replace with actual naming convention as needed)
+                    for file_name in os.listdir(recording_path):
+                        if file_name.endswith('_Motion.txt'):  # Assuming the file follows this pattern
+                            motion_file_path = os.path.join(recording_path, file_name)
+                            motion_data = parse_motion_file(motion_file_path)
+                            
+                            # Construct the _id and recording_id from the folder names
+                            recording_id = f"{user_folder}-{recording_folder}"
+                            sensor_location = file_name.split('_')[0].lower()  # Assuming Bag_Motion.txt -> 'bag'
+                            
+                            # Construct the final dictionary for this motion sensor
+                            motion_sensor_json = {
+                                "_id": f"{user_folder}-{recording_folder}-{file_name}",
+                                "recording_id": recording_id,
+                                "sensor_location": sensor_location,
+                                "acceleration": motion_data["acceleration"],
+                                "gyroscope": motion_data["gyroscope"],
+                                "magnetometer": motion_data["magnetometer"],
+                                "orientation": motion_data["orientation"],
+                                "gravity": motion_data["gravity"],
+                                "linear_acceleration": motion_data["linear_acceleration"],
+                                "pressure": motion_data["pressure"],
+                                "altitude": motion_data["altitude"],
+                                "temperature": motion_data["temperature"]
+                            }
+                            
+                            # Append to the list of all motion sensors
+                            all_motion_sensors.append(motion_sensor_json)
+    
+    return all_motion_sensors
+
+##########################################################################################################################################
+# Function: To create Dictionary Document for DeprCells Sensor Collection based on developed JSON Schema
+##########################################################################################################################################    
+def create_deprcells_json(base_path):
+    """
+    Creates a JSON dictionary for DeprCells sensor data according to the given schema.
+    
+    Args:
+        base_path (str): The base path where the user folders are located.
+
+    Returns:
+        list: List of dictionaries structured as per the DeprCells sensor schema.
+    """
+    all_deprcells = []
+    
+    # Iterate through user folders
+    for user_folder in os.listdir(base_path):
+        user_path = os.path.join(base_path, user_folder)
+        
+        if os.path.isdir(user_path):  # Ensure it is a directory (user folder)
+            
+            # Iterate through each recording folder inside the user folder
+            for recording_folder in os.listdir(user_path):
+                recording_path = os.path.join(user_path, recording_folder)
+                
+                if os.path.isdir(recording_path):  # Ensure it is a directory (recording folder)
+                    
+                    # Look for DeprCells files in the recording folder
+                    for sensor_file in os.listdir(recording_path):
+                        if 'DeprCells' in sensor_file:  # Identify DeprCells sensor file
+                            deprcells_file_path = os.path.join(recording_path, sensor_file)
+                            sensor_location = sensor_file.split('_')[0].lower()  # e.g., "Bag" -> "bag"
+                            
+                            # Parse the DeprCells sensor file
+                            depr_cells_data = parse_deprcells_file(deprcells_file_path)
+                            
+                            # Construct the DeprCells JSON according to the schema
+                            deprcells_json = {
+                                "_id": f"{user_folder}-{recording_folder}-{sensor_file.replace('.txt', '')}",
+                                "recording_id": f"{user_folder}-{recording_folder}",
+                                "sensor_location": sensor_location,
+                                "depr_cells_data": depr_cells_data
+                            }
+                            
+                            # Append to the list of all deprcells data
+                            all_deprcells.append(deprcells_json)
+    
+    return all_deprcells
+
+##########################################################################################################################################
+# Function: To create Dictionary Document for WiFi Sensor Collection based on developed JSON Schema
+##########################################################################################################################################  
+def create_wifi_json(base_path):
+    """
+    Creates a JSON dictionary for Wifi sensor data according to the given schema.
+    
+    Args:
+        base_path (str): The base path where the user folders are located.
+
+    Returns:
+        list: List of dictionaries structured as per the Wifi sensor schema.
+    """
+    all_wifi = []
+    
+    # Iterate through user folders
+    for user_folder in os.listdir(base_path):
+        user_path = os.path.join(base_path, user_folder)
+        
+        if os.path.isdir(user_path):  # Ensure it is a directory (user folder)
+            
+            # Iterate through each recording folder inside the user folder
+            for recording_folder in os.listdir(user_path):
+                recording_path = os.path.join(user_path, recording_folder)
+                
+                if os.path.isdir(recording_path):  # Ensure it is a directory (recording folder)
+                    
+                    # Look for Wifi files in the recording folder
+                    for sensor_file in os.listdir(recording_path):
+                        if 'Wifi' in sensor_file:  # Identify Wifi sensor file
+                            wifi_file_path = os.path.join(recording_path, sensor_file)
+                            sensor_location = sensor_file.split('_')[0].lower()  # e.g., "Bag" -> "bag"
+                            
+                            # Parse the WiFi sensor file
+                            wifi_data = parse_wifi_file(wifi_file_path)
+                            
+                            # Construct the WiFi JSON according to the schema
+                            wifi_json = {
+                                "_id": f"{user_folder}-{recording_folder}-{sensor_file.replace('.txt', '')}",
+                                "recording_id": f"{user_folder}-{recording_folder}",
+                                "sensor_location": sensor_location,
+                                "wifi_data": wifi_data
+                            }
+                            
+                            # Append to the list of all wifi data
+                            all_wifi.append(wifi_json)
+    
+    return all_wifi
+    
+##########################################################################################################################################
+# Function: To create Dictionary Document for GPS Sensor Collection based on developed JSON Schema
+########################################################################################################################################## 
+def create_gps_json(base_path):
+    """
+    Creates a JSON dictionary for GPS sensor data according to the given schema.
+    
+    Args:
+        base_path (str): The base path where the user folders are located.
+
+    Returns:
+        list: List of dictionaries structured as per the GPS sensor schema.
+    """
+    all_gps = []
+    
+    # Iterate through user folders
+    for user_folder in os.listdir(base_path):
+        user_path = os.path.join(base_path, user_folder)
+        
+        if os.path.isdir(user_path):  # Ensure it is a directory (user folder)
+            
+            # Iterate through each recording folder inside the user folder
+            for recording_folder in os.listdir(user_path):
+                recording_path = os.path.join(user_path, recording_folder)
+                
+                if os.path.isdir(recording_path):  # Ensure it is a directory (recording folder)
+                    
+                    # Look for GPS files in the recording folder
+                    for sensor_file in os.listdir(recording_path):
+                        if 'GPS' in sensor_file:  # Identify GPS sensor file
+                            gps_file_path = os.path.join(recording_path, sensor_file)
+                            sensor_location = sensor_file.split('_')[0].lower()  # e.g., "Bag" -> "bag"
+                            
+                            # Parse the GPS sensor file
+                            gps_data = parse_gps_file(gps_file_path)
+                            
+                            # Construct the GPS JSON according to the schema
+                            gps_json = {
+                                "_id": f"{user_folder}-{recording_folder}-{sensor_file.replace('.txt', '')}",
+                                "recording_id": f"{user_folder}-{recording_folder}",
+                                "sensor_location": sensor_location,
+                                "gps_data": gps_data
+                            }
+                            
+                            # Append to the list of all GPS data
+                            all_gps.append(gps_json)
+    
+    return all_gps
+    
+##########################################################################################################################################
+# Function: To create Dictionary Document for Cells Sensor Collection based on developed JSON Schema
+##########################################################################################################################################     
+def create_cells_json(base_path):
+    """
+    Creates a JSON dictionary for Cells sensor data according to the given schema.
+    
+    Args:
+        base_path (str): The base path where the user folders are located.
+
+    Returns:
+        list: List of dictionaries structured as per the Cells sensor schema.
+    """
+    all_cells = []
+    
+    # Iterate through user folders
+    for user_folder in os.listdir(base_path):
+        user_path = os.path.join(base_path, user_folder)
+        
+        if os.path.isdir(user_path):  # Ensure it is a directory (user folder)
+            
+            # Iterate through each recording folder inside the user folder
+            for recording_folder in os.listdir(user_path):
+                recording_path = os.path.join(user_path, recording_folder)
+                
+                if os.path.isdir(recording_path):  # Ensure it is a directory (recording folder)
+                    
+                    # Look for Cells files in the recording folder
+                    for sensor_file in os.listdir(recording_path):
+                        if 'Cells' in sensor_file:  # Identify Cells sensor file
+                            cells_file_path = os.path.join(recording_path, sensor_file)
+                            sensor_location = sensor_file.split('_')[0].lower()  # e.g., "Bag" -> "bag"
+                            
+                            # Parse the Cells sensor file
+                            cells_data = parse_cells_file(cells_file_path)
+                            
+                            # Construct the Cells JSON according to the schema
+                            cells_json = {
+                                "_id": f"{user_folder}-{recording_folder}-{sensor_file.replace('.txt', '')}",
+                                "recording_id": f"{user_folder}-{recording_folder}",
+                                "sensor_location": sensor_location,
+                                "cells_data": cells_data
+                            }
+                            
+                            # Append to the list of all Cells data
+                            all_cells.append(cells_json)
+    
+    return all_cells
+
+##########################################################################################################################################
+# Function: To create Dictionary Document for Labels Sensor Collection based on developed JSON Schema
+########################################################################################################################################## 
+def create_label_sensor_json(base_path):
+    """
+    Create a dictionary representing the Label sensor data structured according to the given JSON schema.
+    
+    Args:
+        base_path (str): The path where the user folders are located.
+        
+    Returns:
+        dict: A dictionary structured according to the given JSON schema.
+    """
+    all_labels = []
+    
+    # Iterate through user folders
+    for user_folder in os.listdir(base_path):
+        user_path = os.path.join(base_path, user_folder)
+        
+        if os.path.isdir(user_path):  # Ensure it's a directory (user folder)
+            
+            # Iterate through each recording folder inside the user folder
+            for recording_folder in os.listdir(user_path):
+                recording_path = os.path.join(user_path, recording_folder)
+                
+                if os.path.isdir(recording_path):  # Ensure it's a directory (recording folder)
+                    
+                    # Look for the Labels.txt file
+                    for label_file in os.listdir(recording_path):
+                        if label_file.endswith("Label.txt"):  # Assuming the file ends with "Label.txt"
+                            label_file_path = os.path.join(recording_path, label_file)
+                            try:
+                                # Parse the label data
+                                label_data = parse_labels_file(label_file_path)
+                                
+                                # Construct the _id and recording_id
+                                label_id = f"{user_folder}-{recording_folder}-{label_file.split('.')[0]}"
+                                recording_id = f"{user_folder}-{recording_folder}"
+                                
+                                # Construct the final dictionary for this label
+                                label_json = {
+                                    "_id": label_id,
+                                    "recording_id": recording_id,
+                                    "label_data": label_data
+                                }
+                                
+                                # Append to the list of all labels
+                                all_labels.append(label_json)
+                                
+                            except Exception as e:
+                                print(f"Error processing file {label_file_path}: {e}")
+    
+    return all_labels

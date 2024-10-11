@@ -1,0 +1,20 @@
+{
+  "_id": "wifi001",
+  "recording_id": "recording001",
+  "sensor_location": "torso",
+  "wifi_data": [
+    {
+      "timestamp": 1609459200000,
+      "wifi_networks": [
+        { "bssid": "00:14:22:01:23:45", "ssid": "MyNetwork", "rssi": -70, "frequency": 2412, "capabilities": "WPA2" },
+        { "bssid": "00:14:22:01:23:46", "ssid": "GuestNetwork", "rssi": -80, "frequency": 2417, "capabilities": "WEP" }
+      ]
+    },
+    {
+      "timestamp": 1609459200100,
+      "wifi_networks": [
+        { "bssid": "00:14:22:01:23:47", "ssid": "AnotherNetwork", "rssi": -65, "frequency": 2462, "capabilities": "WPA2" }
+      ]
+    }
+  ]
+}

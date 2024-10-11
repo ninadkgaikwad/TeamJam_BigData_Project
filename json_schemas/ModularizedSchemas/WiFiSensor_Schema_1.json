@@ -1,0 +1,47 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "WifiSensor",
+  "type": "object",
+  "properties": {
+    "_id": {
+      "type": "string",
+      "description": "The unique identifier for the Wifi sensor data"
+    },
+    "recording_id": {
+      "type": "string",
+      "description": "Reference to the recording this sensor data belongs to"
+    },
+    "sensor_location": {
+      "type": "string",
+      "description": "The location where the sensor is placed (e.g., bag, hand, hips, torso)",
+      "enum": ["bag", "hand", "hips", "torso"]
+    },
+    "wifi_data": {
+      "type": "array",
+      "description": "Array of Wifi sensor readings over time",
+      "items": {
+        "type": "object",
+        "properties": {
+          "timestamp": { "type": "number", "description": "Timestamp in milliseconds" },
+          "wifi_networks": {
+            "type": "array",
+            "description": "Array of visible Wifi networks",
+            "items": {
+              "type": "object",
+              "properties": {
+                "bssid": { "type": "string", "description": "MAC address of the access point" },
+                "ssid": { "type": "string", "description": "Network name (SSID)" },
+                "rssi": { "type": "number", "description": "Signal strength in dBm" },
+                "frequency": { "type": "number", "description": "Frequency in MHz" },
+                "capabilities": { "type": "string", "description": "Security capabilities" }
+              },
+              "required": ["bssid", "ssid", "rssi", "frequency", "capabilities"]
+            }
+          }
+        },
+        "required": ["timestamp", "wifi_networks"]
+      }
+    }
+  },
+  "required": ["_id", "recording_id", "sensor_location", "wifi_data"]
+}

@@ -1,0 +1,35 @@
+{
+  "_id": "cells001",
+  "recording_id": "recording001",
+  "sensor_location": "torso",
+  "cells_data": [
+    {
+      "timestamp": 1609459200000,
+      "number_of_entries": 2,
+      "entries": [
+        {
+          "cell_type": "LTE",
+          "signal_level": 15,
+          "signal_strength": -65,
+          "cell_id": "12345",
+          "mcc": 234,
+          "mnc": 10,
+          "tracking_area_code": "123",
+          "asu_level": 30,
+          "dbm": -80
+        },
+        {
+          "cell_type": "GSM",
+          "signal_level": 12,
+          "signal_strength": -70,
+          "cell_id": "67890",
+          "lac": "54321",
+          "mcc": 310,
+          "mnc": 12,
+          "asu_level": 25,
+          "dbm": -85
+        }
+      ]
+    }
+  ]
+}
