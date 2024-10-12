@@ -10,6 +10,8 @@
 
 import os
 from datetime import datetime
+import pymongo
+import time
 
 ##########################################################################################################################################
 # Import Custom Modules
@@ -692,3 +694,78 @@ def create_label_sensor_json(base_path):
                                 print(f"Error processing file {label_file_path}: {e}")
     
     return all_labels
+
+##########################################################################################################################################
+# Function: To create Dictionary Document for Labels Sensor Collection based on developed JSON Schema
+##########################################################################################################################################    
+
+
+def populate_collection_with_user_recordings(db_name, collection_name, base_path, mongo_uri="mongodb://localhost:27017/"):
+    """
+    Populate a MongoDB collection with user recordings data generated from the folder structure,
+    record the time taken for each insertion, and return the average time of insertion.
+    
+    Args:
+        db_name (str): Name of the MongoDB database.
+        collection_name (str): Name of the MongoDB collection to populate.
+        base_path (str): The path where the user folders are located. Inside each user folder are recording folders.
+        mongo_uri (str): MongoDB URI to connect to the database (default is "mongodb://localhost:27017/").
+        
+    Returns:
+        float: Average time taken to insert each record in seconds.
+    
+    Example:
+        db_name = "mydatabase"
+        collection_name = "userdata"
+        base_path = "/path/to/data"
+        
+        populate_collection_with_user_recordings(db_name, collection_name, base_path)
+    """
+    
+    # Establish a connection to MongoDB
+    client = pymongo.MongoClient(mongo_uri)
+    
+    # Access the specified database and collection
+    db = client[db_name]
+    collection = db[collection_name]
+    
+    # Use the existing function to create the data
+    user_recordings_data = create_user_recordings_json(base_path)
+    
+    # List to store insertion times
+    insertion_times = []
+    
+    # Insert the user recordings data into the collection
+    if user_recordings_data:
+        for record in user_recordings_data:
+            try:
+                # Record the start time
+                start_time = time.time()
+                
+                # Insert or update the record (based on _id)
+                collection.update_one({"_id": record["_id"]}, {"$set": record}, upsert=True)
+                
+                # Record the end time
+                end_time = time.time()
+                
+                # Calculate the time taken for this insertion and add to the list
+                insertion_time = end_time - start_time
+                insertion_times.append(insertion_time)
+                
+                print(f"Data inserted/updated for user: {record['_id']} (Time: {insertion_time:.4f} seconds)")
+                
+            except Exception as e:
+                print(f"Error inserting data for {record['_id']}: {e}")
+    
+    # Calculate the average insertion time
+    if insertion_times:
+        avg_insertion_time = sum(insertion_times) / len(insertion_times)
+        print(f"Average insertion time: {avg_insertion_time:.4f} seconds")
+    else:
+        avg_insertion_time = 0
+        print("No data was inserted.")
+    
+    # Close the MongoDB connection
+    client.close()
+    
+    return avg_insertion_time
