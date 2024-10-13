@@ -116,5 +116,16 @@ def analyze_multiple_zip_files_with_structure(zip_filepaths):
 
     return all_data
 
-# Run the primary function
-primary()
+def get_df_raw(zip_filepaths):
+    """
+    Function to run the analysis and return the raw DataFrame (df_raw).
+    """
+    file_sizes_df = analyze_multiple_zip_files_with_structure(zip_filepaths)
+
+    if file_sizes_df.empty:
+        print("No data found in the zip file(s).")
+        return None
+
+    total_sizes_df = calculate_total_size_per_user(file_sizes_df)
+    return total_sizes_df
+
