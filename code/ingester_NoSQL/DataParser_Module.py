@@ -8,7 +8,7 @@
 # Import Required Modules
 ##########################################################################################################################################
 
-import os
+import os, math
 from datetime import datetime
 
 ##########################################################################################################################################
@@ -194,6 +194,14 @@ def parse_motion_file(motion_file_path):
     Returns:
         dict: Dictionary with parsed motion sensor data.
     """
+    def to_float_or_zero(value):
+        print("data cleaned\n")
+        # Convert to float or return 0.0 if the value is NaN or cannot be converted
+        try:
+            return float(value) if value != 'NaN' else 0.0
+        except ValueError:
+            return 0.0
+
     motion_data = {
         "acceleration": [],
         "gyroscope": [],
@@ -209,67 +217,70 @@ def parse_motion_file(motion_file_path):
     with open(motion_file_path, 'r') as file:
         for line in file:
             values = line.strip().split()
+
+            # Ensure the line has the expected number of values
             if len(values) == 23:
-                timestamp = int(values[0])
-                
+                # Convert timestamp to an int (multiplying by 100 to preserve decimals if needed)
+                timestamp = int(float(values[0]) * 100)
+
                 motion_data["acceleration"].append({
                     "timestamp": timestamp,
-                    "x": float(values[1]),
-                    "y": float(values[2]),
-                    "z": float(values[3])
+                    "x": to_float_or_zero(values[1]),
+                    "y": to_float_or_zero(values[2]),
+                    "z": to_float_or_zero(values[3])
                 })
                 
                 motion_data["gyroscope"].append({
                     "timestamp": timestamp,
-                    "x": float(values[4]),
-                    "y": float(values[5]),
-                    "z": float(values[6])
+                    "x": to_float_or_zero(values[4]),
+                    "y": to_float_or_zero(values[5]),
+                    "z": to_float_or_zero(values[6])
                 })
                 
                 motion_data["magnetometer"].append({
                     "timestamp": timestamp,
-                    "x": float(values[7]),
-                    "y": float(values[8]),
-                    "z": float(values[9])
+                    "x": to_float_or_zero(values[7]),
+                    "y": to_float_or_zero(values[8]),
+                    "z": to_float_or_zero(values[9])
                 })
                 
                 motion_data["orientation"].append({
                     "timestamp": timestamp,
-                    "w": float(values[10]),
-                    "x": float(values[11]),
-                    "y": float(values[12]),
-                    "z": float(values[13])
+                    "w": to_float_or_zero(values[10]),
+                    "x": to_float_or_zero(values[11]),
+                    "y": to_float_or_zero(values[12]),
+                    "z": to_float_or_zero(values[13])
                 })
                 
                 motion_data["gravity"].append({
                     "timestamp": timestamp,
-                    "x": float(values[14]),
-                    "y": float(values[15]),
-                    "z": float(values[16])
+                    "x": to_float_or_zero(values[14]),
+                    "y": to_float_or_zero(values[15]),
+                    "z": to_float_or_zero(values[16])
                 })
                 
                 motion_data["linear_acceleration"].append({
                     "timestamp": timestamp,
-                    "x": float(values[17]),
-                    "y": float(values[18]),
-                    "z": float(values[19])
+                    "x": to_float_or_zero(values[17]),
+                    "y": to_float_or_zero(values[18]),
+                    "z": to_float_or_zero(values[19])
                 })
                 
                 motion_data["pressure"].append({
                     "timestamp": timestamp,
-                    "value": float(values[20])
+                    "value": to_float_or_zero(values[20])
                 })
                 
                 motion_data["altitude"].append({
                     "timestamp": timestamp,
-                    "value": float(values[21])
+                    "value": to_float_or_zero(values[21])
                 })
                 
                 motion_data["temperature"].append({
                     "timestamp": timestamp,
-                    "value": float(values[22])
+                    "value": to_float_or_zero(values[22])
                 })
-    
+    print("end of function\n")
     return motion_data
 
 ##########################################################################################################################################
@@ -410,15 +421,30 @@ def parse_cells_file(cells_file_path):
         lines = file.readlines()
         for line in lines:
             parts = line.strip().split(' ')
+            
+            # Check if the line contains at least 4 elements for timestamp and number_of_entries
+            if len(parts) < 4:
+                print(f"Skipping line due to insufficient data: {line.strip()}")
+                continue
+            
             timestamp = int(parts[0])  # First element is timestamp
-            number_of_entries = int(parts[3])  # Number of entries is the 4th element
-            
+            try:
+                number_of_entries = int(parts[3])  # Number of entries is the 4th element
+            except ValueError:
+                print(f"Skipping line with invalid number_of_entries: {line.strip()}")
+                continue
+
             entries = []
-            
             index = 4  # Start reading the cell entries from the 5th element
+            
+            # Ensure we don't attempt to access parts that don't exist
             for _ in range(number_of_entries):
+                if index >= len(parts):
+                    print(f"Skipping incomplete entry for timestamp {timestamp}")
+                    break  # Break if there are not enough parts to read the expected entry
+
                 cell_type = parts[index]
-                if cell_type == "LTE":
+                if cell_type == "LTE" and index + 8 < len(parts):  # Check if there are enough elements
                     entries.append({
                         "cell_type": cell_type,
                         "signal_level": float(parts[index + 1]),
@@ -431,7 +457,7 @@ def parse_cells_file(cells_file_path):
                         "tracking_area_code": parts[index + 8] if index + 8 < len(parts) else None                        
                     })
                     index += 9  # Move to the next LTE entry
-                elif cell_type == "GSM":
+                elif cell_type == "GSM" and index + 7 < len(parts):  # Check if there are enough elements
                     entries.append({
                         "cell_type": cell_type,
                         "signal_level": float(parts[index + 1]),
@@ -443,7 +469,7 @@ def parse_cells_file(cells_file_path):
                         "mnc": int(parts[index + 7]) if index + 7 < len(parts) else None
                     })
                     index += 8  # Move to the next GSM entry
-                elif cell_type == "WCDMA":
+                elif cell_type == "WCDMA" and index + 9 < len(parts):  # Check if there are enough elements
                     entries.append({
                         "cell_type": cell_type,
                         "is_registered": float(parts[index + 1]),
@@ -457,15 +483,20 @@ def parse_cells_file(cells_file_path):
                         "level": float(parts[index + 9]) if index + 9 < len(parts) else None
                     })
                     index += 10  # Move to the next WCDMA entry
+                else:
+                    #print(f"Unknown or incomplete cell type entry at timestamp {timestamp}, skipping.")
+                    break  # Skip incomplete or unknown cell types
             
-            # Append each record with cell information
-            cells_data.append({
-                "timestamp": timestamp,
-                "number_of_entries": number_of_entries,
-                "entries": entries
-            })
+            # Append each record with cell information if valid entries exist
+            if entries:
+                cells_data.append({
+                    "timestamp": timestamp,
+                    "number_of_entries": number_of_entries,
+                    "entries": entries
+                })
     
     return cells_data
+
     
 ##########################################################################################################################################
 # Function: To read Label.txt file contents

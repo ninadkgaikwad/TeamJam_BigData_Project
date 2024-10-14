@@ -1,57 +1,49 @@
-import zipfile
-import pandas as pd
 import os
+import pandas as pd
 
 def primary():
-    # List of zip file paths
-    zip_filepaths = [
-        '/path/to/SHLDataset_User2.zip'
+    # List of directory paths (instead of zip files)
+    folder_paths = [
+        r'/Users/ary_d/OneDrive - Washington State University (email.wsu.edu)/Desktop/userdata/Uncompressed',
+        r'/Users/ary_d/OneDrive - Washington State University (email.wsu.edu)/Desktop/userdata/Uncompressed',
+        r'/Users/ary_d/OneDrive - Washington State University (email.wsu.edu)/Desktop/userdata/Uncompressed'
     ]
 
-    file_sizes_df = analyze_multiple_zip_files_with_structure(zip_filepaths)
+    file_sizes_df = analyze_multiple_directories(folder_paths)
 
     # Check if DataFrame is empty
     if file_sizes_df.empty:
-        print("No data found in the zip file(s).")
+        print("No data found in the folder(s).")
     else:
         print("Data found:")
         print(file_sizes_df)
 
-    # Calculate total size per user
-    total_sizes_df = calculate_total_size_per_user(file_sizes_df)
-    print("\nTotal Data Size per User:")
+    # Calculate total size per recording
+    total_sizes_df = calculate_total_size_per_recording(file_sizes_df)
+    print("\nTotal Data Size per Recording:")
     print(total_sizes_df)
 
-    # Optionally, save the DataFrame to a CSV file for further analysis
-    # file_sizes_df.to_csv('detailed_file_sizes_summary.csv', index=False)
+    # Write to CSV
+    file_sizes_df.to_csv('raw_file_sizes.csv', index=False)
+    total_sizes_df.to_csv('total_file_sizes_per_recording.csv', index=False)
 
-def calculate_total_size_per_user(df):
+    return total_sizes_df
+
+def calculate_total_size_per_recording(df):
     """
-    Calculates the total file size for each user.
-
-    Args:
-        df (pd.DataFrame): The DataFrame containing file sizes and user information.
-
-    Returns:
-        pd.DataFrame: A DataFrame containing the total file size per user in megabytes.
+    Calculates the total file size for each recording.
     """
-    # Group the data by 'User ID' and sum the 'File Size (MB)'
-    total_size_df = df.groupby('User ID')['File Size (MB)'].sum().reset_index()
+    # Group the data by 'Recording ID' and sum the 'File Size (MB)'
+    total_size_df = df.groupby('Recording ID')['File Size (MB)'].sum().reset_index()
 
     # Rename the column for clarity
-    total_size_df.columns = ['User ID', 'Total File Size (MB)']
+    total_size_df.columns = ['Recording ID', 'Total File Size (MB)']
 
     return total_size_df
 
-def analyze_zip_file_sizes_by_structure(zip_filepath):
+def analyze_directory_sizes_by_structure(directory_path):
     """
-    Analyzes the sizes of files inside a zip file considering the detailed file structure and returns a DataFrame.
-
-    Args:
-        zip_filepath (str): The path to the zip file.
-
-    Returns:
-        pd.DataFrame: A DataFrame containing the file sizes categorized by user, recording ID, and phone position.
+    Analyzes the sizes of files inside a directory considering the detailed file structure and returns a DataFrame.
     """
     file_info_list = []
 
@@ -59,73 +51,57 @@ def analyze_zip_file_sizes_by_structure(zip_filepath):
     ignored_extensions = ['.mat', '.kml', '.AVI']
     ignored_filenames = ['videooffset.txt', 'videospeedup.txt']
 
-    with zipfile.ZipFile(zip_filepath, 'r') as zip_ref:
-        # Loop through each file in the zip archive
-        for file_info in zip_ref.infolist():
-            # Extract file name details
-            file_path = file_info.filename
-            file_size = file_info.file_size
+    # Walk through the directory structure
+    for root, dirs, files in os.walk(directory_path):
+        for file_name in files:
+            file_path = os.path.join(root, file_name)
+            file_size = os.path.getsize(file_path)  # File size in bytes
 
-            # Get the base name and extension of the file
-            file_name, file_extension = os.path.splitext(file_path)
-
-            # Check if the file should be ignored
-            if file_extension in ignored_extensions or os.path.basename(file_path) in ignored_filenames:
+            _, file_extension = os.path.splitext(file_name)
+            if file_extension in ignored_extensions or file_name in ignored_filenames:
                 continue  # Skip ignored files
 
-            # Remove the file extension for cleaner output
-            clean_file_name = os.path.basename(file_name)
+            path_parts = root.split(os.sep)
+            if len(path_parts) < 4:
+                continue  # Skip if the folder structure doesn't have enough depth
 
-            # Split the path to get detailed information
-            path_parts = file_path.split('/')
-            user_id = path_parts[1] if len(path_parts) > 1 else 'Unknown User'
-            recording_id = path_parts[2] if len(path_parts) > 2 else 'Unknown Recording'
-            position = path_parts[3].split('_')[0] if len(path_parts) > 3 and '_' in path_parts[3] else 'Unknown Position'
+            recording_id = path_parts[-2]  # 'Recording1', 'Recording2', etc.
+            position = path_parts[-1] if len(path_parts) > 3 else 'Unknown Position'
 
-            # Convert file size from bytes to megabytes
-            file_size_mb = file_size / (1024 * 1024)
+            file_size_mb = file_size / (1024 * 1024)  # Convert file size to MB
 
-            # Append the information to a list
             file_info_list.append({
-                'User ID': user_id,
                 'Recording ID': recording_id,
                 'Position': position,
-                'File Name': clean_file_name,  # File name without extension
-                'File Size (MB)': round(file_size_mb, 2)  # Size in MB
+                'File Name': file_name,  # File name without extension
+                'File Size (MB)': round(file_size_mb, 2)
             })
 
-    # Convert the list of file information into a Pandas DataFrame
+    # Convert the list of file information into a DataFrame
     df = pd.DataFrame(file_info_list)
     return df
 
-def analyze_multiple_zip_files_with_structure(zip_filepaths):
+def analyze_multiple_directories(directory_paths):
     """
-    Analyzes file sizes from multiple zip files considering the detailed file structure and returns a combined DataFrame.
-
-    Args:
-        zip_filepaths (list): List of paths to the zip files.
-
-    Returns:
-        pd.DataFrame: A DataFrame containing file sizes for all users, recordings, and positions.
+    Analyzes file sizes from multiple directories considering the detailed file structure.
     """
     all_data = pd.DataFrame()
 
-    for zip_filepath in zip_filepaths:
-        df = analyze_zip_file_sizes_by_structure(zip_filepath)
+    for directory_path in directory_paths:
+        df = analyze_directory_sizes_by_structure(directory_path)
         all_data = pd.concat([all_data, df], ignore_index=True)
 
     return all_data
 
-def get_df_raw(zip_filepaths):
+def get_df_raw(folder_paths):
     """
     Function to run the analysis and return the raw DataFrame (df_raw).
     """
-    file_sizes_df = analyze_multiple_zip_files_with_structure(zip_filepaths)
+    file_sizes_df = analyze_multiple_directories(folder_paths)
 
     if file_sizes_df.empty:
-        print("No data found in the zip file(s).")
+        print("No data found in the folder(s).")
         return None
 
-    total_sizes_df = calculate_total_size_per_user(file_sizes_df)
+    total_sizes_df = calculate_total_size_per_recording(file_sizes_df)
     return total_sizes_df
-

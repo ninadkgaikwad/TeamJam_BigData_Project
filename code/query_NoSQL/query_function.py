@@ -1,171 +1,116 @@
 from pymongo import MongoClient
-import json
 import pandas as pd
-import  time
+import time
 
-
-
-# # Example usage:
-# user_id = "12345"  # Replace with the actual user_id
-
-# # Call the function and retrieve the data as a dictionary
-# sensor_data_dict = find_sensor_data_by_user_id(user_id)
-
-def find_sensor_data_by_id(_id):
+def find_sensor_data_by_recording_id(recording_id):
     # MongoDB connection
-    uri = "placeholder"  
+    uri = "mongodb://localhost:27017/"  # Replace with your actual MongoDB URI
     client = MongoClient(uri)
-    database = client.get_database("AA")  # Adjust the database name if different
-    collection = database.get_collection("ambientsensor")  # Adjust the collection name
+    database = client.get_database("SensorDatabase")  # Adjust the database name if different
+    collection = database.get_collection("batterysensor")  # Adjust the collection name
 
-    """
-    Query MongoDB for sensor data based on _id.
-    
-    Args:
-        _id (str): The user ID to filter by.
-        
-    Returns:
-        dict: A dictionary where each key is the recording_id, and each value is the full document.
-    """
-    # Query to match user_id only
+    # Query to match recording_id
     query = {
-        "_id": _id  # Match the user_id
-    }
-    
-    # Execute the query
-    results = collection.find(query)
-
-    # Initialize a dictionary to store results
-    result_dict = {}
-
-    # Process each document
-    for document in results:
-        # Use recording_id as the key and the full document as the value
-        result_dict[document["recording_id"]] = document
-
-    return result_dict
-
-
-# # Example usage:
-# _id = "12345"  # Replace with the actual _id you are searching for
-# recording_id = "abc123"  # Replace with the actual recording_id
-
-# # Call the function and retrieve results as a dictionary
-# sensor_data_dict = find_sensor_data_by_recording_id(user_id, recording_id)
-
-def find_sensor_data_by_recording_id(_id, recording_id):
-    # MongoDB connection
-    uri = "placeholder"  
-    client = MongoClient(uri)
-    database = client.get_database("AA")  # Adjust the database name if different
-    collection = database.get_collection("ambientsensor")  # Adjust the collection name
-
-    query = {
-        "_id": _id,  # Match the user_id from metadata in the MongoDB documents
-        "recording_id": recording_id  # Search for the specific recording_id
+        "recording_id": recording_id  # Match the specific recording_id
     }
 
-    # Execute the query and fetch matching documents
-    results = collection.find(query)
+    # Execute the query and exclude the _id field
+    results = collection.find(query, {"_id": 0})
 
-    # Convert results into a dictionary, using recording_id as the key
-    result_dict = {}
-    for document in results:
-        result_dict[document["recording_id"]] = document  # Use recording_id as the key
-    
-    return result_dict
+    # Convert results to a list of dictionaries
+    results_list = list(results)
+
+    # Create a pandas DataFrame from the list of documents
+    df = pd.DataFrame(results_list)
+
+    # Save the DataFrame to a CSV file
+    df.to_csv(f'{recording_id}_sensor_data.csv', index=False)
+
+    return df
 
 
-# # Example usage:
-# user_id = "12345"  # Replace with the actual user_id
-# recording_id = "abc123"  # Replace with the actual recording_id
-# start_timestamp = 1600000000  # Replace with the start of the timestamp range
-# end_timestamp = 1609999999  # Replace with the end of the timestamp range
-
-# # Call the function and retrieve the filtered data as a dictionary
-# sensor_data_dict = find_sensor_data_by_recording_id_and_timestamp(user_id, recording_id, start_timestamp, end_timestamp)
-
-def find_sensor_data_by_recording_id_and_timestamp(_id, recording_id, start_timestamp, end_timestamp):
-
+def find_sensor_data_by_recording_id_and_timestamp(recording_id, start_timestamp, end_timestamp):
     # MongoDB connection
-    uri = "placeholder"  
+    uri = "mongodb://localhost:27017/"  # Replace with your actual MongoDB URI
     client = MongoClient(uri)
-    database = client.get_database("AA")  # Adjust the database name if different
-    collection = database.get_collection("ambientsensor")  # Adjust the collection name
+    database = client.get_database("SensorDatabase")  # Adjust the database name if different
+    collection = database.get_collection("batterysensor")  # Adjust the collection name
 
-    """
-    Query MongoDB for sensor data based on _id, recording_id, and a timestamp range.
-    
-    Args:
-        _id (str): The user ID to filter by.
-        recording_id (str): The recording ID to filter by.
-        start_timestamp (int): The start of the timestamp range (in milliseconds).
-        end_timestamp (int): The end of the timestamp range (in milliseconds).
-        
-    Returns:
-        dict: A dictionary where each key is the recording_id, and each value is the filtered document
-              with ambient_data that matches the timestamp range.
-    """
-    # Query to match user_id, recording_id, and the timestamp range within the ambient_data array
+    # Query to match recording_id and the timestamp range within the battery_data array
     query = {
-        "_id": _id,  # Match the _id
         "recording_id": recording_id,  # Match the recording_id
-        "ambient_data": {
+        "battery_data": {
             "$elemMatch": {
-                "timestamp": {
-                    "$gte": start_timestamp,  # Greater than or equal to start_timestamp
-                    "$lte": end_timestamp  # Less than or equal to end_timestamp
+                "timestamp.$numberLong": {
+                    "$gte": str(start_timestamp),  # Greater than or equal to start_timestamp
+                    "$lte": str(end_timestamp)  # Less than or equal to end_timestamp
                 }
             }
         }
     }
-    
-    # Execute the query
-    results = collection.find(query)
 
-    # Initialize a dictionary to store results
-    result_dict = {}
+    # Execute the query and exclude the _id field
+    results = collection.find(query, {"_id": 0})
 
-    # Process each document
-    for document in results:
-        # Filter only the ambient_data entries that match the timestamp range
-        filtered_ambient_data = [
-            entry for entry in document["ambient_data"]
-            if start_timestamp <= entry["timestamp"] <= end_timestamp
-        ]
+    # Convert results to a list of dictionaries
+    results_list = list(results)
 
-        # Add the filtered ambient_data back into the document
-        document["ambient_data"] = filtered_ambient_data
+    # Create a pandas DataFrame from the list of documents
+    df = pd.DataFrame(results_list)
 
-        # Use recording_id as the key and the full document as the value
-        result_dict[document["recording_id"]] = document
+    # Save the DataFrame to a CSV file
+    df.to_csv(f'{recording_id}_sensor_data_{start_timestamp}_to_{end_timestamp}.csv', index=False)
 
-    return result_dict
+    return df
 
 
+def find_sensor_data_by_recording_id_and_location(recording_id, sensor_location):
+    # MongoDB connection
+    uri = "mongodb://localhost:27017/"  # Replace with your actual MongoDB URI
+    client = MongoClient(uri)
+    database = client.get_database("SensorDatabase")  # Adjust the database name if different
+    collection = database.get_collection("batterysensor")  # Adjust the collection name
 
-# Measure execution time for each function
+    # Query to match recording_id and sensor_location
+    query = {
+        "recording_id": recording_id,  # Match the recording_id
+        "sensor_location": sensor_location  # Match the sensor_location (e.g., "hips")
+    }
 
-# Example user ID and recording details
-user_id = "12345"  # Replace with the actual _id
-recording_id = "abc123"  # Replace with the actual recording_id
-start_timestamp = 1600000000  # Replace with the start of the timestamp range
-end_timestamp = 1609999999  # Replace with the end of the timestamp range
+    # Execute the query and exclude the _id field
+    results = collection.find(query, {"_id": 0})
 
-# Timing the find_sensor_data_by_id function
-start_time = time.time()  # Start time measurement
-sensor_data_by_id = find_sensor_data_by_id(user_id)
-end_time = time.time()  # End time measurement
-print(f"Execution time for find_sensor_data_by_id: {end_time - start_time:.4f} seconds")
+    # Convert results to a list of dictionaries
+    results_list = list(results)
 
-# Timing the find_sensor_data_by_recording_id function
-start_time = time.time()  # Start time measurement
-sensor_data_by_recording_id = find_sensor_data_by_recording_id(user_id, recording_id)
-end_time = time.time()  # End time measurement
+    # Create a pandas DataFrame from the list of documents
+    df = pd.DataFrame(results_list)
+
+    # Save the DataFrame to a CSV file
+    df.to_csv(f'{recording_id}_sensor_data_{sensor_location}.csv', index=False)
+
+    return df
+
+
+# Example usage
+
+recording_id = "User2-140617"  # Example recording_id based on your document
+start_timestamp = 1497427158140  # Start of the range
+end_timestamp = 1497427899496  # End of the range
+sensor_location = "hips"  # Specify "hips" as the sensor location
+
+# Timing and executing each function
+start_time = time.time()
+df_by_recording_id = find_sensor_data_by_recording_id(recording_id)
+end_time = time.time()
 print(f"Execution time for find_sensor_data_by_recording_id: {end_time - start_time:.4f} seconds")
 
-# Timing the find_sensor_data_by_recording_id_and_timestamp function
-start_time = time.time()  # Start time measurement
-sensor_data_by_recording_id_and_timestamp = find_sensor_data_by_recording_id_and_timestamp(user_id, recording_id, start_timestamp, end_timestamp)
-end_time = time.time()  # End time measurement
+start_time = time.time()
+df_by_timestamp = find_sensor_data_by_recording_id_and_timestamp(recording_id, start_timestamp, end_timestamp)
+end_time = time.time()
 print(f"Execution time for find_sensor_data_by_recording_id_and_timestamp: {end_time - start_time:.4f} seconds")
+
+start_time = time.time()
+df_by_location = find_sensor_data_by_recording_id_and_location(recording_id, sensor_location)
+end_time = time.time()
+print(f"Execution time for find_sensor_data_by_recording_id_and_location: {end_time - start_time:.4f} seconds")

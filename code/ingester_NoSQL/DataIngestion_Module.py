@@ -18,6 +18,101 @@ import time
 ##########################################################################################################################################
 from DataParser_Module import *
 
+def populate_sensor_collection(db_name, collection_name, base_path, mongo_uri="mongodb://localhost:27017/"):
+    """
+    Populate a MongoDB collection with sensor data generated from the folder structure,
+    record the time taken for each insertion, and return the average time of insertion.
+    
+    Args:
+        db_name (str): Name of the MongoDB database.
+        collection_name (str): Name of the MongoDB collection to populate.
+        base_path (str): The path where the user folders are located. Inside each user folder are recording folders.
+        mongo_uri (str): MongoDB URI to connect to the database (default is "mongodb://localhost:27017/").
+        
+    Returns:
+        float: Average time taken to insert each record in seconds.
+    
+    Example:
+        db_name = "mydatabase"
+        collection_name = "ambientsensor"
+        base_path = "/path/to/data"
+        
+        populate_sensor_collection(db_name, collection_name, base_path)
+    """
+    
+    # Establish a connection to MongoDB
+    client = pymongo.MongoClient(mongo_uri)
+    
+    # Access the specified database and collection
+    db = client[db_name]
+    collection = db[collection_name]
+    
+    # Dynamically select the correct data creation function based on the collection name
+    if collection_name == "ambientsensor":
+        sensor_data = create_ambient_sensor_json(base_path)
+    elif collection_name == "batterysensor":
+        sensor_data = create_battery_json(base_path)
+    elif collection_name == "apisensor":
+        sensor_data = create_api_recording_json(base_path)
+    elif collection_name == "locationsensor":
+        sensor_data = create_location_sensor_json(base_path)
+    elif collection_name == "motionsensor":
+        sensor_data = create_motion_sensor_json(base_path)
+    elif collection_name == "deprcellssensor":
+        sensor_data = create_deprcells_json(base_path)
+    elif collection_name == "wifisensor":
+        sensor_data = create_wifi_json(base_path)
+    elif collection_name == "recordingdata":
+        sensor_data = create_recordings_json_with_metadata(base_path)
+    elif collection_name == "gpssensor":
+        sensor_data = create_gps_json(base_path)
+    elif collection_name == "cellssensor":
+        sensor_data = create_cells_json(base_path)
+    elif collection_name == "labelsensor":
+        sensor_data = create_label_sensor_json(base_path)
+    else:
+        print(f"Unknown collection: {collection_name}")
+        return None
+    
+    # List to store insertion times
+    insertion_times = []
+    
+    # Insert the sensor data into the collection
+    if sensor_data:
+        for record in sensor_data:
+            try:
+                # Record the start time
+                start_time = time.time()
+                
+                # Insert or update the record (based on _id)
+                collection.update_one({"_id": record["_id"]}, {"$set": record}, upsert=True)
+                
+                # Record the end time
+                end_time = time.time()
+                
+                # Calculate the time taken for this insertion and add to the list
+                insertion_time = end_time - start_time
+                insertion_times.append(insertion_time)
+                
+                print(f"Data inserted/updated for: {record['_id']} (Time: {insertion_time:.4f} seconds)")
+                
+            except Exception as e:
+                print(f"Error inserting data for {record['_id']}: {e}")
+    
+    # Calculate the average insertion time
+    if insertion_times:
+        avg_insertion_time = sum(insertion_times) / len(insertion_times)
+        print(f"Average insertion time: {avg_insertion_time:.4f} seconds")
+    else:
+        avg_insertion_time = 0
+        print("No data was inserted.")
+    
+    # Close the MongoDB connection
+    client.close()
+    
+    return avg_insertion_time
+
+
 ##########################################################################################################################################
 # Function: To create Dictionary Document for User Collection based on developed JSON Schema
 ##########################################################################################################################################

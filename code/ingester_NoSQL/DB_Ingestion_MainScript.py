@@ -14,7 +14,7 @@ import csv
 ##########################################################################################################################################
 # Import Custom Modules
 ##########################################################################################################################################
-from DataIngestion_Module import *
+import DataIngestion_Module as helper
 
 ##########################################################################################################################################
 # Custom Functions
@@ -39,11 +39,11 @@ def save_to_csv(filename, data):
 ##########################################################################################################################################
 
 ## User Inputs   
-base_path = "/path/to/data"  # Update this path to your base data directory
+base_path = "/Users/ary_d/OneDrive - Washington State University (email.wsu.edu)/Desktop/userdata/Uncompressed"  # Update this path to your base data directory
 
 mongo_uri = "mongodb://localhost:27017/"  # Update MongoDB URI if needed
 
-db_name = "mydatabase"
+db_name = "SensorDatabase"
 
 
 # List of available collection names
@@ -78,7 +78,7 @@ for idx in selected_indices:
     if 0 <= idx < len(collections):
         collection_name = collections[idx]
         print(f"Populating data for {collection_name}...")
-        avg_time = populate_collection_with_data(db_name, collection_name, base_path, mongo_uri)
+        avg_time = helper.populate_sensor_collection(db_name, collection_name, base_path, mongo_uri)
         
         # Store the average time for this collection
         if avg_time is not None:
