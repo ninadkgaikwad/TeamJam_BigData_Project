@@ -27,7 +27,7 @@ def save_to_csv(filename, data):
         filename (str): The name of the CSV file.
         data (dict): A dictionary of collection names and their average insertion times.
     """
-    with open(filename, mode='w', newline='') as file:
+    with open(filename, mode='a', newline='') as file:
         writer = csv.writer(file)
         writer.writerow(['Collection', 'Average Insertion Time (seconds)'])
         for collection, avg_time in data.items():
@@ -77,9 +77,7 @@ avg_insertion_times = {}
 for idx in selected_indices:
     if 0 <= idx < len(collections):
         collection_name = collections[idx]
-        print(f"Populating data for {collection_name}...")
         avg_time = helper.populate_sensor_collection(db_name, collection_name, base_path, mongo_uri)
-        
         # Store the average time for this collection
         if avg_time is not None:
             avg_insertion_times[collection_name] = avg_time

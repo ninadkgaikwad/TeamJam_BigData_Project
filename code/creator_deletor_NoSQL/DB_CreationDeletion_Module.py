@@ -7,9 +7,11 @@
 ##########################################################################################################################################
 # Import Required Modules
 ##########################################################################################################################################
+import pymongo
 from pymongo import MongoClient
 import os
 import json
+
 
 ##########################################################################################################################################
 # Function: Connect to the MongoDB instance.
@@ -29,9 +31,11 @@ def connect_to_mongodb(uri="mongodb://localhost:27017/"):
 ##########################################################################################################################################
 # Function: To Create collections in MongoDB based on JSON schema files and enforce the schema for validation.
 ##########################################################################################################################################    
+
 def create_collections_from_schemas(db, schema_folder_path):
     """
-    Create collections in MongoDB based on JSON schema files and enforce the schema for validation.
+    Create collections in MongoDB based on JSON schema files and enforce schema validation.
+    Sets up a time series collection for specific collections, such as 'motionsensor'.
     
     Args:
         db: The MongoDB database instance.
@@ -39,24 +43,30 @@ def create_collections_from_schemas(db, schema_folder_path):
     """
     for schema_file in os.listdir(schema_folder_path):
         if schema_file.endswith('.json'):
-            # Extract the collection name from the filename
             collection_name = schema_file.replace("_Schema_1.json", "").lower()
-            
-            # Load the JSON schema
             with open(os.path.join(schema_folder_path, schema_file), 'r') as file:
                 schema = json.load(file)
 
-            # Apply the schema as validation rules while creating the collection
-            validation_rules = {
-                "$jsonSchema": schema
-            }
-
-            # Create the collection with schema validation (if collection doesn't already exist)
-            if collection_name not in db.list_collection_names():
-                db.create_collection(collection_name, validator=validation_rules)
-                print(f"Created collection with schema validation: {collection_name}")
+            if collection_name == "motionsensor":
+                # Create a time series collection for the motion sensor data
+                db.create_collection(
+                    collection_name,
+                    timeseries={
+                        "timeField": "timestamp",  # This is the field to use as the timestamp for each entry
+                        "metaField": "metadata",   # Stores metadata like sensor location and recording ID
+                        "granularity": "milliseconds"  # Use "seconds" or "minutes" depending on frequency
+                    }
+                )
+                print(f"Created time series collection: {collection_name}")
             else:
-                print(f"Collection already exists: {collection_name}")
+                # For non-time series collections, create a regular collection with validation rules
+                validation_rules = {"$jsonSchema": schema}
+                if collection_name not in db.list_collection_names():
+                    db.create_collection(collection_name, validator=validation_rules)
+                    print(f"Created collection with schema validation: {collection_name}")
+                else:
+                    print(f"Collection already exists: {collection_name}")
+
 
 ##########################################################################################################################################
 # Function: To List all databases in the MongoDB instance.

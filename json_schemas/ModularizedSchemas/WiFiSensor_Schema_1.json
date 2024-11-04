@@ -17,28 +17,18 @@
     },
     "wifi_data": {
       "type": "array",
-      "description": "Array of Wifi sensor readings over time",
+      "description": "Flattened array of Wifi sensor readings over time",
       "items": {
         "type": "object",
         "properties": {
           "timestamp": { "type": "number", "description": "Timestamp in milliseconds" },
-          "wifi_networks": {
-            "type": "array",
-            "description": "Array of visible Wifi networks",
-            "items": {
-              "type": "object",
-              "properties": {
-                "bssid": { "type": "string", "description": "MAC address of the access point" },
-                "ssid": { "type": "string", "description": "Network name (SSID)" },
-                "rssi": { "type": "number", "description": "Signal strength in dBm" },
-                "frequency": { "type": "number", "description": "Frequency in MHz" },
-                "capabilities": { "type": "string", "description": "Security capabilities" }
-              },
-              "required": ["bssid", "ssid", "rssi", "frequency", "capabilities"]
-            }
-          }
+          "bssid": { "type": "string", "description": "MAC address of the access point" },
+          "ssid": { "type": "string", "description": "Network name (SSID)" },
+          "rssi": { "type": "number", "description": "Signal strength in dBm" },
+          "frequency": { "type": "number", "description": "Frequency in MHz" },
+          "capabilities": { "type": "string", "description": "Security capabilities" }
         },
-        "required": ["timestamp", "wifi_networks"]
+        "required": ["timestamp", "bssid", "ssid", "rssi", "frequency", "capabilities"]
       }
     }
   },

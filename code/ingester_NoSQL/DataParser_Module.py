@@ -184,18 +184,20 @@ def parse_location_file(location_file_path):
 ##########################################################################################################################################
 # Function: To read """_Motion.txt file contents
 ##########################################################################################################################################
-def parse_motion_file(motion_file_path):
+import time
+
+def parse_motion_file(motion_file_path, max_lines=None):
     """
-    Parse the Motion.txt file to extract motion sensor data.
+    Parse the Motion.txt file to extract motion sensor data with enhanced debugging.
     
     Args:
         motion_file_path (str): Path to the motion sensor data file.
+        max_lines (int, optional): Maximum lines to parse for debugging. Default is None (no limit).
     
     Returns:
         dict: Dictionary with parsed motion sensor data.
     """
     def to_float_or_zero(value):
-        print("data cleaned\n")
         # Convert to float or return 0.0 if the value is NaN or cannot be converted
         try:
             return float(value) if value != 'NaN' else 0.0
@@ -214,74 +216,91 @@ def parse_motion_file(motion_file_path):
         "temperature": []
     }
 
+    start_time = time.time()
     with open(motion_file_path, 'r') as file:
-        for line in file:
-            values = line.strip().split()
+        for line_num, line in enumerate(file):
+            if max_lines and line_num >= max_lines:
+                print(f"Reached maximum line limit for debugging: {max_lines}")
+                break
 
+            values = line.strip().split()
+            
             # Ensure the line has the expected number of values
             if len(values) == 23:
-                # Convert timestamp to an int (multiplying by 100 to preserve decimals if needed)
-                timestamp = int(float(values[0]) * 100)
+                try:
+                    # Convert timestamp to an int (multiplying by 100 to preserve decimals if needed)
+                    timestamp = int(float(values[0]) * 100)
 
-                motion_data["acceleration"].append({
-                    "timestamp": timestamp,
-                    "x": to_float_or_zero(values[1]),
-                    "y": to_float_or_zero(values[2]),
-                    "z": to_float_or_zero(values[3])
-                })
-                
-                motion_data["gyroscope"].append({
-                    "timestamp": timestamp,
-                    "x": to_float_or_zero(values[4]),
-                    "y": to_float_or_zero(values[5]),
-                    "z": to_float_or_zero(values[6])
-                })
-                
-                motion_data["magnetometer"].append({
-                    "timestamp": timestamp,
-                    "x": to_float_or_zero(values[7]),
-                    "y": to_float_or_zero(values[8]),
-                    "z": to_float_or_zero(values[9])
-                })
-                
-                motion_data["orientation"].append({
-                    "timestamp": timestamp,
-                    "w": to_float_or_zero(values[10]),
-                    "x": to_float_or_zero(values[11]),
-                    "y": to_float_or_zero(values[12]),
-                    "z": to_float_or_zero(values[13])
-                })
-                
-                motion_data["gravity"].append({
-                    "timestamp": timestamp,
-                    "x": to_float_or_zero(values[14]),
-                    "y": to_float_or_zero(values[15]),
-                    "z": to_float_or_zero(values[16])
-                })
-                
-                motion_data["linear_acceleration"].append({
-                    "timestamp": timestamp,
-                    "x": to_float_or_zero(values[17]),
-                    "y": to_float_or_zero(values[18]),
-                    "z": to_float_or_zero(values[19])
-                })
-                
-                motion_data["pressure"].append({
-                    "timestamp": timestamp,
-                    "value": to_float_or_zero(values[20])
-                })
-                
-                motion_data["altitude"].append({
-                    "timestamp": timestamp,
-                    "value": to_float_or_zero(values[21])
-                })
-                
-                motion_data["temperature"].append({
-                    "timestamp": timestamp,
-                    "value": to_float_or_zero(values[22])
-                })
-    print("end of function\n")
+                    # Populate motion data arrays with parsed values
+                    motion_data["acceleration"].append({
+                        "timestamp": timestamp,
+                        "x": to_float_or_zero(values[1]),
+                        "y": to_float_or_zero(values[2]),
+                        "z": to_float_or_zero(values[3])
+                    })
+                    
+                    motion_data["gyroscope"].append({
+                        "timestamp": timestamp,
+                        "x": to_float_or_zero(values[4]),
+                        "y": to_float_or_zero(values[5]),
+                        "z": to_float_or_zero(values[6])
+                    })
+                    
+                    motion_data["magnetometer"].append({
+                        "timestamp": timestamp,
+                        "x": to_float_or_zero(values[7]),
+                        "y": to_float_or_zero(values[8]),
+                        "z": to_float_or_zero(values[9])
+                    })
+                    
+                    motion_data["orientation"].append({
+                        "timestamp": timestamp,
+                        "w": to_float_or_zero(values[10]),
+                        "x": to_float_or_zero(values[11]),
+                        "y": to_float_or_zero(values[12]),
+                        "z": to_float_or_zero(values[13])
+                    })
+                    
+                    motion_data["gravity"].append({
+                        "timestamp": timestamp,
+                        "x": to_float_or_zero(values[14]),
+                        "y": to_float_or_zero(values[15]),
+                        "z": to_float_or_zero(values[16])
+                    })
+                    
+                    motion_data["linear_acceleration"].append({
+                        "timestamp": timestamp,
+                        "x": to_float_or_zero(values[17]),
+                        "y": to_float_or_zero(values[18]),
+                        "z": to_float_or_zero(values[19])
+                    })
+                    
+                    motion_data["pressure"].append({
+                        "timestamp": timestamp,
+                        "value": to_float_or_zero(values[20])
+                    })
+                    
+                    motion_data["altitude"].append({
+                        "timestamp": timestamp,
+                        "value": to_float_or_zero(values[21])
+                    })
+                    
+                    motion_data["temperature"].append({
+                        "timestamp": timestamp,
+                        "value": to_float_or_zero(values[22])
+                    })
+
+                except Exception as e:
+                    print(f"Error parsing line {line_num} in {motion_file_path}: {e}")
+                    continue  # Skip this line and move to the next
+
+            else:
+                print(f"Skipping line {line_num}: Unexpected format with {len(values)} values")
+
+    end_time = time.time()
+    print(f"Finished parsing {motion_file_path} in {end_time - start_time:.2f} seconds")
     return motion_data
+
 
 ##########################################################################################################################################
 # Function: To read """_DeprCells.txt file contents
@@ -289,29 +308,45 @@ def parse_motion_file(motion_file_path):
 def parse_deprcells_file(deprcells_file_path):
     """
     Parses a DeprCells sensor file and extracts the data according to the schema.
-
+    
     Args:
         deprcells_file_path (str): Path to the DeprCells sensor file.
-
+    
     Returns:
         list: List of dictionaries, each representing a sensor data reading.
     """
-    depr_cells_data = []
+    
+    def to_int_or_default(value, default=0):
+        """Convert value to int or return default if conversion fails."""
+        try:
+            return int(value)
+        except ValueError:
+            return default
 
+    def to_float_or_default(value, default=0.0):
+        """Convert value to float or return default if conversion fails."""
+        try:
+            return float(value)
+        except ValueError:
+            return default
+
+    depr_cells_data = []
+    
     # Read the DeprCells file line by line
     with open(deprcells_file_path, 'r') as file:
         lines = file.readlines()
+        
         for line in lines:
             parts = line.strip().split()  # Split by whitespace
             if len(parts) >= 9:
                 depr_cells_data.append({
-                    "timestamp": int(parts[0]),  # Time in ms
-                    "network_type": parts[3],    # Network type
-                    "cid": parts[4],             # Cell ID
-                    "lac": parts[5],             # Location Area Code
-                    "dbm": float(parts[6]),      # Signal strength in dBm
-                    "mcc": int(parts[7]),        # Mobile Country Code
-                    "mns": int(parts[8])         # Mobile Network Code
+                    "timestamp": to_int_or_default(parts[0]),  # Time in ms
+                    "network_type": parts[3],                  # Network type
+                    "cid": parts[4],                           # Cell ID
+                    "lac": parts[5],                           # Location Area Code
+                    "dbm": to_float_or_default(parts[6]),      # Signal strength in dBm
+                    "mcc": to_int_or_default(parts[7]),        # Mobile Country Code
+                    "mns": to_int_or_default(parts[8])         # Mobile Network Code
                 })
     
     return depr_cells_data
@@ -321,84 +356,106 @@ def parse_deprcells_file(deprcells_file_path):
 ##########################################################################################################################################
 def parse_wifi_file(wifi_file_path):
     """
-    Parses a Wifi sensor file and extracts the data according to the schema.
+    Parses a Wifi sensor file and extracts the data according to the flattened schema.
     
     Args:
         wifi_file_path (str): Path to the Wifi sensor file.
     
     Returns:
-        list: List of dictionaries, each representing a sensor data reading.
+        list: List of dictionaries, each representing a flattened wifi network reading.
     """
     wifi_data = []
     
     # Read the WiFi file line by line
-    with open(wifi_file_path, 'r') as file:
+    with open(wifi_file_path, 'r', encoding='utf-8') as file:
         lines = file.readlines()
         for line in lines:
             parts = line.strip().split(';')  # Split by semicolon for Wifi fields
-            timestamp = int(parts[0])  # First element is timestamp
-            wifi_networks = []
+            
+            # Extract timestamp
+            try:
+                timestamp = int(parts[0])  # First element is timestamp
+            except ValueError:
+                print(f"Skipping line due to invalid timestamp: {line}")
+                continue  # Skip this line if timestamp is not an integer
             
             # Parse each WiFi network's details starting from the 4th column
-            for i in range(3, len(parts), 5):  # BSSID, SSID, RSSI, Frequency, Capabilities
-                if i + 4 < len(parts):
-                    wifi_networks.append({
-                        "bssid": parts[i].strip(),
-                        "ssid": parts[i+1].strip(),
-                        "rssi": float(parts[i+2].strip()),
-                        "frequency": float(parts[i+3].strip()),
-                        "capabilities": parts[i+4].strip()
-                    })
-                    
-            # Append each WiFi record with its corresponding networks
-            wifi_data.append({
-                "timestamp": timestamp,
-                "wifi_networks": wifi_networks
-            })
+            for i in range(4, len(parts), 5):  # BSSID, SSID, RSSI, Frequency, Capabilities
+                if i + 4 < len(parts):  # Ensure all 5 fields are available
+                    try:
+                        wifi_data.append({
+                            "timestamp": timestamp,
+                            "bssid": parts[i].strip(),
+                            "ssid": parts[i+1].strip(),
+                            "rssi": float(parts[i+2].strip()),
+                            "frequency": float(parts[i+3].strip()),
+                            "capabilities": parts[i+4].strip()
+                        })
+                    except ValueError as e:
+                        print(f"Skipping network entry at index {i} due to parsing error: {e}")
+                        continue  # Skip this network entry if any value is invalid
     
     return wifi_data
 
 ##########################################################################################################################################
 # Function: To read """_GPS.txt file contents
 ##########################################################################################################################################
-def parse_gps_file(gps_file_path):
+def parse_gps_file(gps_file_path, max_interval=10000000):
     """
-    Parses a GPS sensor file and extracts the data according to the schema.
+    Parses a GPS sensor file and extracts data in chunks based on a time interval.
     
     Args:
         gps_file_path (str): Path to the GPS sensor file.
+        max_interval (int): Maximum interval (in milliseconds) for each chunk.
     
-    Returns:
-        list: List of dictionaries, each representing a GPS data reading.
+    Yields:
+        dict: A dictionary representing a chunk of GPS data.
     """
     gps_data = []
-    
-    # Read the GPS file line by line
+    start_time = None
+
     with open(gps_file_path, 'r') as file:
         lines = file.readlines()
+        
         for line in lines:
             parts = line.strip().split(' ')
-            timestamp = int(parts[0])  # First element is timestamp
-            
-            satellite_info = []
-            
-            # Parse satellite information
-            if len(parts) > 3:
-                for i in range(3, len(parts) - 1, 4):
-                    satellite_info.append({
-                        "id": parts[i],
-                        "snr": float(parts[i + 1]),
-                        "azimuth": float(parts[i + 2]),
-                        "elevation": float(parts[i + 3])
-                    })
-            
-            # Append each GPS record with satellite information
-            gps_data.append({
-                "timestamp": timestamp,
-                "satellite_info": satellite_info
-            })
-    
-    return gps_data
+            try:
+                timestamp = int(parts[0])  # First element is timestamp
+                
+                # Initialize start_time if it is None
+                if start_time is None:
+                    start_time = timestamp
+
+                # Check if the interval exceeds the max_interval; if so, yield the current chunk
+                if timestamp - start_time >= max_interval:
+                    yield gps_data
+                    gps_data = []
+                    start_time = timestamp
+
+                # Parse satellite information
+                satellite_info = []
+                if len(parts) > 3:
+                    for i in range(3, len(parts) - 1, 4):
+                        satellite_info.append({
+                            "id": parts[i],
+                            "snr": float(parts[i + 1]),
+                            "azimuth": float(parts[i + 2]),
+                            "elevation": float(parts[i + 3])
+                        })
+
+                # Append each GPS record with satellite information
+                gps_data.append({
+                    "timestamp": timestamp,
+                    "satellite_info": satellite_info
+                })
+
+            except ValueError:
+                print(f"Skipping malformed line: {line}")
+
+    # Yield remaining data if there is any
+    if gps_data:
+        yield gps_data
+
 
 
 ##########################################################################################################################################

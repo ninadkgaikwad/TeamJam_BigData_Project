@@ -108,34 +108,9 @@
         "properties": {
           "timestamp": { "type": "number", "description": "Timestamp in milliseconds" },
           "value": { "type": "number", "description": "Pressure in hPa" }
-        },
-        "required": ["timestamp", "value"]
-      }
-    },
-    "altitude": {
-      "type": "array",
-      "description": "Array of altitude readings over time",
-      "items": {
-        "type": "object",
-        "properties": {
-          "timestamp": { "type": "number", "description": "Timestamp in milliseconds" },
-          "value": { "type": "number", "description": "Altitude derived from the pressure sensor (m)" }
-        },
-        "required": ["timestamp", "value"]
-      }
-    },
-    "temperature": {
-      "type": "array",
-      "description": "Array of temperature readings over time",
-      "items": {
-        "type": "object",
-        "properties": {
-          "timestamp": { "type": "number", "description": "Timestamp in milliseconds" },
-          "value": { "type": "number", "description": "Temperature derived from the pressure sensor (°C)" }
-        },
-        "required": ["timestamp", "value"]
+ 
+        }
       }
     }
-  },
-  "required": ["_id", "recording_id", "sensor_location", "acceleration", "gyroscope", "magnetometer", "orientation", "gravity", "linear_acceleration", "pressure", "altitude", "temperature"]
+  }
 }

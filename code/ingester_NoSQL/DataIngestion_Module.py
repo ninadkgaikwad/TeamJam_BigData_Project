@@ -18,99 +18,106 @@ import time
 ##########################################################################################################################################
 from DataParser_Module import *
 
-def populate_sensor_collection(db_name, collection_name, base_path, mongo_uri="mongodb://localhost:27017/"):
+def populate_sensor_collection(db_name, collection_name, base_path, mongo_uri="mongodb://localhost:27017/", batch_size=100):
     """
     Populate a MongoDB collection with sensor data generated from the folder structure,
-    record the time taken for each insertion, and return the average time of insertion.
-    
+    process in batches if specified, and return the average time of insertion.
+
     Args:
         db_name (str): Name of the MongoDB database.
         collection_name (str): Name of the MongoDB collection to populate.
-        base_path (str): The path where the user folders are located. Inside each user folder are recording folders.
-        mongo_uri (str): MongoDB URI to connect to the database (default is "mongodb://localhost:27017/").
-        
+        base_path (str): Path where the user folders are located.
+        mongo_uri (str): MongoDB URI to connect to the database.
+        batch_size (int): Number of documents per batch insertion.
+
     Returns:
         float: Average time taken to insert each record in seconds.
-    
-    Example:
-        db_name = "mydatabase"
-        collection_name = "ambientsensor"
-        base_path = "/path/to/data"
-        
-        populate_sensor_collection(db_name, collection_name, base_path)
     """
-    
+    from pymongo import MongoClient
+    import time
+
     # Establish a connection to MongoDB
-    client = pymongo.MongoClient(mongo_uri)
-    
-    # Access the specified database and collection
+    client = MongoClient(mongo_uri)
     db = client[db_name]
     collection = db[collection_name]
     
     # Dynamically select the correct data creation function based on the collection name
     if collection_name == "ambientsensor":
-        sensor_data = create_ambient_sensor_json(base_path)
+        sensor_data_generator = create_ambient_sensor_json(base_path)
     elif collection_name == "batterysensor":
-        sensor_data = create_battery_json(base_path)
+        sensor_data_generator = create_battery_json(base_path)
     elif collection_name == "apisensor":
-        sensor_data = create_api_recording_json(base_path)
+        sensor_data_generator = create_api_recording_json(base_path)
     elif collection_name == "locationsensor":
-        sensor_data = create_location_sensor_json(base_path)
+        sensor_data_generator = create_location_sensor_json(base_path)
     elif collection_name == "motionsensor":
-        sensor_data = create_motion_sensor_json(base_path)
+        sensor_data_generator = create_motion_sensor_json(base_path)
     elif collection_name == "deprcellssensor":
-        sensor_data = create_deprcells_json(base_path)
+        sensor_data_generator = create_deprcells_json(base_path)
     elif collection_name == "wifisensor":
-        sensor_data = create_wifi_json(base_path)
+        sensor_data_generator = create_wifi_json(base_path)
     elif collection_name == "recordingdata":
-        sensor_data = create_recordings_json_with_metadata(base_path)
+        sensor_data_generator = create_recordings_json_with_metadata(base_path)
     elif collection_name == "gpssensor":
-        sensor_data = create_gps_json(base_path)
+        sensor_data_generator = create_gps_json(base_path)
     elif collection_name == "cellssensor":
-        sensor_data = create_cells_json(base_path)
+        sensor_data_generator = create_cells_json(base_path)
     elif collection_name == "labelsensor":
-        sensor_data = create_label_sensor_json(base_path)
+        sensor_data_generator = create_label_sensor_json(base_path)
     else:
         print(f"Unknown collection: {collection_name}")
         return None
     
     # List to store insertion times
     insertion_times = []
-    
-    # Insert the sensor data into the collection
-    if sensor_data:
-        for record in sensor_data:
-            try:
-                # Record the start time
+    batch = []
+
+    # Process the sensor data in batches if specified
+    for record in sensor_data_generator:
+        if batch_size > 1:
+            batch.append(record)
+            # Insert the batch when it reaches the specified batch size
+            if len(batch) >= batch_size:
                 start_time = time.time()
-                
-                # Insert or update the record (based on _id)
+                try:
+                    collection.insert_many(batch, ordered=False)
+                    end_time = time.time()
+                    insertion_times.append(end_time - start_time)
+                    print(f"Inserted batch of {len(batch)} documents.")
+                except Exception as e:
+                    print(f"Error inserting batch: {e}")
+                finally:
+                    batch = []  # Clear batch for next set
+        else:
+            # Process each record individually if batch_size is 1
+            try:
+                start_time = time.time()
                 collection.update_one({"_id": record["_id"]}, {"$set": record}, upsert=True)
-                
-                # Record the end time
                 end_time = time.time()
-                
-                # Calculate the time taken for this insertion and add to the list
-                insertion_time = end_time - start_time
-                insertion_times.append(insertion_time)
-                
-                print(f"Data inserted/updated for: {record['_id']} (Time: {insertion_time:.4f} seconds)")
-                
+                insertion_times.append(end_time - start_time)
+                print(f"Data inserted/updated for: {record['_id']} (Time: {end_time - start_time:.4f} seconds)")
             except Exception as e:
                 print(f"Error inserting data for {record['_id']}: {e}")
-    
+
+    # Insert any remaining records in the final batch
+    if batch:
+        start_time = time.time()
+        try:
+            collection.insert_many(batch, ordered=False)
+            end_time = time.time()
+            insertion_times.append(end_time - start_time)
+            print(f"Inserted final batch of {len(batch)} documents.")
+        except Exception as e:
+            print(f"Error inserting final batch: {e}")
+
     # Calculate the average insertion time
-    if insertion_times:
-        avg_insertion_time = sum(insertion_times) / len(insertion_times)
-        print(f"Average insertion time: {avg_insertion_time:.4f} seconds")
-    else:
-        avg_insertion_time = 0
-        print("No data was inserted.")
-    
+    avg_insertion_time = sum(insertion_times) / len(insertion_times) if insertion_times else 0
+    print(f"Average insertion time: {avg_insertion_time:.4f} seconds")
+
     # Close the MongoDB connection
     client.close()
-    
     return avg_insertion_time
+
 
 
 ##########################################################################################################################################
@@ -486,59 +493,52 @@ def create_location_sensor_json(base_path):
 ##########################################################################################################################################
 # Function: To create Dictionary Document for Motion Sensor Collection based on developed JSON Schema
 ##########################################################################################################################################
-def create_motion_sensor_json(base_path):
+def create_motion_sensor_json(base_path, chunk_size=10000):
     """
-    Create a dictionary representing motion sensor data structured according to the provided JSON schema.
+    Creates a list of motion sensor documents, each containing a chunk of sensor data.
     
     Args:
-        base_path (str): The path where the user folders are located. Inside each user folder are recording folders named with the format 'ddmmyy'.
-        
-    Returns:
-        list: A list of dictionaries structured according to the JSON schema.
+        base_path (str): The path where the user folders are located.
+    
+    Yields:
+        dict: Document structured according to the JSON schema.
     """
     all_motion_sensors = []
     
-    # Iterate through user folders
     for user_folder in os.listdir(base_path):
         user_path = os.path.join(base_path, user_folder)
         
-        if os.path.isdir(user_path):  # Ensure it is a directory (user folder)
-            
-            # Iterate through each recording folder inside the user folder
+        if os.path.isdir(user_path):
             for recording_folder in os.listdir(user_path):
                 recording_path = os.path.join(user_path, recording_folder)
                 
-                if os.path.isdir(recording_path):  # Ensure it is a directory (recording folder)
-                    # Look for the Motion.txt file (replace with actual naming convention as needed)
+                if os.path.isdir(recording_path):
                     for file_name in os.listdir(recording_path):
-                        if file_name.endswith('_Motion.txt'):  # Assuming the file follows this pattern
+                        if file_name.endswith('_Motion.txt'):
                             motion_file_path = os.path.join(recording_path, file_name)
                             motion_data = parse_motion_file(motion_file_path)
                             
-                            # Construct the _id and recording_id from the folder names
                             recording_id = f"{user_folder}-{recording_folder}"
-                            sensor_location = file_name.split('_')[0].lower()  # Assuming Bag_Motion.txt -> 'bag'
+                            sensor_location = file_name.split('_')[0].lower()
                             
-                            # Construct the final dictionary for this motion sensor
-                            motion_sensor_json = {
-                                "_id": f"{user_folder}-{recording_folder}-{file_name}",
+                            chunked_data = {
+                                "_id": f"{recording_id}-{sensor_location}",
                                 "recording_id": recording_id,
                                 "sensor_location": sensor_location,
-                                "acceleration": motion_data["acceleration"],
-                                "gyroscope": motion_data["gyroscope"],
-                                "magnetometer": motion_data["magnetometer"],
-                                "orientation": motion_data["orientation"],
-                                "gravity": motion_data["gravity"],
-                                "linear_acceleration": motion_data["linear_acceleration"],
-                                "pressure": motion_data["pressure"],
-                                "altitude": motion_data["altitude"],
-                                "temperature": motion_data["temperature"]
+                                "acceleration": motion_data["acceleration"][:chunk_size],
+                                "gyroscope": motion_data["gyroscope"][:chunk_size],
+                                "magnetometer": motion_data["magnetometer"][:chunk_size],
+                                "orientation": motion_data["orientation"][:chunk_size],
+                                "gravity": motion_data["gravity"][:chunk_size],
+                                "linear_acceleration": motion_data["linear_acceleration"][:chunk_size],
+                                "pressure": motion_data["pressure"][:chunk_size],
+                                "altitude": motion_data["altitude"][:chunk_size],
+                                "temperature": motion_data["temperature"][:chunk_size]
                             }
                             
-                            # Append to the list of all motion sensors
-                            all_motion_sensors.append(motion_sensor_json)
-    
-    return all_motion_sensors
+                            yield chunked_data
+
+
 
 ##########################################################################################################################################
 # Function: To create Dictionary Document for DeprCells Sensor Collection based on developed JSON Schema
@@ -594,7 +594,8 @@ def create_deprcells_json(base_path):
 ##########################################################################################################################################  
 def create_wifi_json(base_path):
     """
-    Creates a JSON dictionary for Wifi sensor data according to the given schema.
+    Creates JSON documents for Wifi sensor data according to the schema,
+    splitting wifi_data across multiple documents if necessary.
     
     Args:
         base_path (str): The base path where the user folders are located.
@@ -603,6 +604,7 @@ def create_wifi_json(base_path):
         list: List of dictionaries structured as per the Wifi sensor schema.
     """
     all_wifi = []
+    max_chunk_size = 90000  # Adjust this to a reasonable chunk size
     
     # Iterate through user folders
     for user_folder in os.listdir(base_path):
@@ -618,42 +620,44 @@ def create_wifi_json(base_path):
                     
                     # Look for Wifi files in the recording folder
                     for sensor_file in os.listdir(recording_path):
-                        if 'Wifi' in sensor_file:  # Identify Wifi sensor file
+                        if 'WiFi' in sensor_file:  # Identify Wifi sensor file
                             wifi_file_path = os.path.join(recording_path, sensor_file)
                             sensor_location = sensor_file.split('_')[0].lower()  # e.g., "Bag" -> "bag"
                             
                             # Parse the WiFi sensor file
                             wifi_data = parse_wifi_file(wifi_file_path)
                             
-                            # Construct the WiFi JSON according to the schema
-                            wifi_json = {
-                                "_id": f"{user_folder}-{recording_folder}-{sensor_file.replace('.txt', '')}",
-                                "recording_id": f"{user_folder}-{recording_folder}",
-                                "sensor_location": sensor_location,
-                                "wifi_data": wifi_data
-                            }
-                            
-                            # Append to the list of all wifi data
-                            all_wifi.append(wifi_json)
+                            # Split wifi_data into chunks
+                            for i in range(0, len(wifi_data), max_chunk_size):
+                                wifi_chunk = wifi_data[i:i + max_chunk_size]
+                                
+                                wifi_json = {
+                                    "_id": f"{user_folder}-{recording_folder}-{sensor_file.replace('.txt', '')}-{i // max_chunk_size}",
+                                    "recording_id": f"{user_folder}-{recording_folder}",
+                                    "sensor_location": sensor_location,
+                                    "wifi_data": wifi_chunk
+                                }
+                                
+                                # Append to the list of all wifi data
+                                all_wifi.append(wifi_json)
     
     return all_wifi
+
+
     
 ##########################################################################################################################################
 # Function: To create Dictionary Document for GPS Sensor Collection based on developed JSON Schema
 ########################################################################################################################################## 
 def create_gps_json(base_path):
     """
-    Creates a JSON dictionary for GPS sensor data according to the given schema.
+    Creates a JSON dictionary for GPS sensor data in chunks according to the schema.
     
     Args:
         base_path (str): The base path where the user folders are located.
 
-    Returns:
-        list: List of dictionaries structured as per the GPS sensor schema.
+    Yields:
+        dict: Each chunk of GPS data as a separate document.
     """
-    all_gps = []
-    
-    # Iterate through user folders
     for user_folder in os.listdir(base_path):
         user_path = os.path.join(base_path, user_folder)
         
@@ -671,21 +675,16 @@ def create_gps_json(base_path):
                             gps_file_path = os.path.join(recording_path, sensor_file)
                             sensor_location = sensor_file.split('_')[0].lower()  # e.g., "Bag" -> "bag"
                             
-                            # Parse the GPS sensor file
-                            gps_data = parse_gps_file(gps_file_path)
-                            
-                            # Construct the GPS JSON according to the schema
-                            gps_json = {
-                                "_id": f"{user_folder}-{recording_folder}-{sensor_file.replace('.txt', '')}",
-                                "recording_id": f"{user_folder}-{recording_folder}",
-                                "sensor_location": sensor_location,
-                                "gps_data": gps_data
-                            }
-                            
-                            # Append to the list of all GPS data
-                            all_gps.append(gps_json)
-    
-    return all_gps
+                            # Parse the GPS sensor file and create chunks
+                            for i, gps_data_chunk in enumerate(parse_gps_file(gps_file_path)):
+                                gps_json = {
+                                    "_id": f"{user_folder}-{recording_folder}-{sensor_file.replace('.txt', '')}-chunk-{i}",
+                                    "recording_id": f"{user_folder}-{recording_folder}",
+                                    "sensor_location": sensor_location,
+                                    "gps_data": gps_data_chunk
+                                }
+                                yield gps_json
+
     
 ##########################################################################################################################################
 # Function: To create Dictionary Document for Cells Sensor Collection based on developed JSON Schema
@@ -739,19 +738,18 @@ def create_cells_json(base_path):
 ##########################################################################################################################################
 # Function: To create Dictionary Document for Labels Sensor Collection based on developed JSON Schema
 ########################################################################################################################################## 
-def create_label_sensor_json(base_path):
+def create_label_sensor_json(base_path, chunk_size=100000):
     """
-    Create a dictionary representing the Label sensor data structured according to the given JSON schema.
-    
+    Creates a list of label sensor documents, each containing a chunk of label data.
+
     Args:
         base_path (str): The path where the user folders are located.
-        
-    Returns:
-        dict: A dictionary structured according to the given JSON schema.
-    """
-    all_labels = []
+        chunk_size (int): Number of label entries per chunk.
     
-    # Iterate through user folders
+    Yields:
+        dict: Document structured according to the JSON schema.
+    """
+    
     for user_folder in os.listdir(base_path):
         user_path = os.path.join(base_path, user_folder)
         
@@ -772,23 +770,20 @@ def create_label_sensor_json(base_path):
                                 label_data = parse_labels_file(label_file_path)
                                 
                                 # Construct the _id and recording_id
-                                label_id = f"{user_folder}-{recording_folder}-{label_file.split('.')[0]}"
+                                label_id_base = f"{user_folder}-{recording_folder}-{label_file.split('.')[0]}"
                                 recording_id = f"{user_folder}-{recording_folder}"
                                 
-                                # Construct the final dictionary for this label
-                                label_json = {
-                                    "_id": label_id,
-                                    "recording_id": recording_id,
-                                    "label_data": label_data
-                                }
-                                
-                                # Append to the list of all labels
-                                all_labels.append(label_json)
+                                # Create chunks of label data and yield each as a separate document
+                                for i in range(0, len(label_data), chunk_size):
+                                    chunked_data = {
+                                        "_id": f"{label_id_base}-chunk-{i // chunk_size}",
+                                        "recording_id": recording_id,
+                                        "label_data": label_data[i:i + chunk_size]
+                                    }
+                                    yield chunked_data
                                 
                             except Exception as e:
                                 print(f"Error processing file {label_file_path}: {e}")
-    
-    return all_labels
 
 ##########################################################################################################################################
 # Function: To create Dictionary Document for Labels Sensor Collection based on developed JSON Schema

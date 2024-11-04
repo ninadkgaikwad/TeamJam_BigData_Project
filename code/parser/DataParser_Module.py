@@ -186,7 +186,7 @@ def parse_location_file(location_file_path):
 ##########################################################################################################################################
 def parse_motion_file(motion_file_path):
     """
-    Parse the Motion.txt file to extract motion sensor data.
+    Parse the Motion.txt file to extract motion sensor data as chunks.
     
     Args:
         motion_file_path (str): Path to the motion sensor data file.
@@ -194,6 +194,12 @@ def parse_motion_file(motion_file_path):
     Returns:
         dict: Dictionary with parsed motion sensor data.
     """
+    def to_float_or_zero(value):
+        try:
+            return float(value) if value != 'NaN' else 0.0
+        except ValueError:
+            return 0.0
+
     motion_data = {
         "acceleration": [],
         "gyroscope": [],
@@ -209,68 +215,70 @@ def parse_motion_file(motion_file_path):
     with open(motion_file_path, 'r') as file:
         for line in file:
             values = line.strip().split()
+
+            # Ensure the line has the expected number of values
             if len(values) == 23:
-                timestamp = int(values[0])
-                
+                timestamp = int(float(values[0]) * 100)
+
                 motion_data["acceleration"].append({
                     "timestamp": timestamp,
-                    "x": float(values[1]),
-                    "y": float(values[2]),
-                    "z": float(values[3])
+                    "x": to_float_or_zero(values[1]),
+                    "y": to_float_or_zero(values[2]),
+                    "z": to_float_or_zero(values[3])
                 })
                 
                 motion_data["gyroscope"].append({
                     "timestamp": timestamp,
-                    "x": float(values[4]),
-                    "y": float(values[5]),
-                    "z": float(values[6])
+                    "x": to_float_or_zero(values[4]),
+                    "y": to_float_or_zero(values[5]),
+                    "z": to_float_or_zero(values[6])
                 })
                 
                 motion_data["magnetometer"].append({
                     "timestamp": timestamp,
-                    "x": float(values[7]),
-                    "y": float(values[8]),
-                    "z": float(values[9])
+                    "x": to_float_or_zero(values[7]),
+                    "y": to_float_or_zero(values[8]),
+                    "z": to_float_or_zero(values[9])
                 })
                 
                 motion_data["orientation"].append({
                     "timestamp": timestamp,
-                    "w": float(values[10]),
-                    "x": float(values[11]),
-                    "y": float(values[12]),
-                    "z": float(values[13])
+                    "w": to_float_or_zero(values[10]),
+                    "x": to_float_or_zero(values[11]),
+                    "y": to_float_or_zero(values[12]),
+                    "z": to_float_or_zero(values[13])
                 })
                 
                 motion_data["gravity"].append({
                     "timestamp": timestamp,
-                    "x": float(values[14]),
-                    "y": float(values[15]),
-                    "z": float(values[16])
+                    "x": to_float_or_zero(values[14]),
+                    "y": to_float_or_zero(values[15]),
+                    "z": to_float_or_zero(values[16])
                 })
                 
                 motion_data["linear_acceleration"].append({
                     "timestamp": timestamp,
-                    "x": float(values[17]),
-                    "y": float(values[18]),
-                    "z": float(values[19])
+                    "x": to_float_or_zero(values[17]),
+                    "y": to_float_or_zero(values[18]),
+                    "z": to_float_or_zero(values[19])
                 })
                 
                 motion_data["pressure"].append({
                     "timestamp": timestamp,
-                    "value": float(values[20])
+                    "value": to_float_or_zero(values[20])
                 })
                 
                 motion_data["altitude"].append({
                     "timestamp": timestamp,
-                    "value": float(values[21])
+                    "value": to_float_or_zero(values[21])
                 })
                 
                 motion_data["temperature"].append({
                     "timestamp": timestamp,
-                    "value": float(values[22])
+                    "value": to_float_or_zero(values[22])
                 })
-    
-    return motion_data
+
+    return motion_data                 
 
 ##########################################################################################################################################
 # Function: To read """_DeprCells.txt file contents
@@ -323,19 +331,36 @@ def parse_wifi_file(wifi_file_path):
     # Read the WiFi file line by line
     with open(wifi_file_path, 'r') as file:
         lines = file.readlines()
-        for line in lines:
+        for line_number, line in enumerate(lines):
             parts = line.strip().split(';')  # Split by semicolon for Wifi fields
-            timestamp = int(parts[0])  # First element is timestamp
+            
+            # Log the parts to verify the structure
+            print(f"Line {line_number}: {parts}")
+            
+            try:
+                timestamp = int(parts[0])  # First element is timestamp
+            except ValueError as e:
+                print(f"Error parsing timestamp on line {line_number}: {e}")
+                continue  # Skip this line if timestamp is invalid
+
             wifi_networks = []
             
             # Parse each WiFi network's details starting from the 4th column
             for i in range(3, len(parts), 5):  # BSSID, SSID, RSSI, Frequency, Capabilities
                 if i + 4 < len(parts):
+                    # Check if parts[i+2] and parts[i+3] are numeric before converting
+                    try:
+                        rssi = float(parts[i+2].strip())
+                        frequency = float(parts[i+3].strip())
+                    except ValueError as e:
+                        print(f"Error parsing RSSI or Frequency on line {line_number} at index {i}: {e}")
+                        continue  # Skip this network entry if it contains invalid data
+                    
                     wifi_networks.append({
                         "bssid": parts[i].strip(),
                         "ssid": parts[i+1].strip(),
-                        "rssi": float(parts[i+2].strip()),
-                        "frequency": float(parts[i+3].strip()),
+                        "rssi": rssi,
+                        "frequency": frequency,
                         "capabilities": parts[i+4].strip()
                     })
                     
@@ -346,6 +371,8 @@ def parse_wifi_file(wifi_file_path):
             })
     
     return wifi_data
+
+
 
 ##########################################################################################################################################
 # Function: To read """_GPS.txt file contents
