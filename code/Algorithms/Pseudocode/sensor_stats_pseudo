@@ -1,0 +1,14 @@
+# Pseudocode the query_function.py was built off of
+
+'''
+def get_sensor_statistics(collection_name, recording_id, sensor_location, timestamp_range, fields):
+    connect_to_db()
+    pipeline = []
+    if conditions_present:
+        pipeline.append(match_stage)
+    pipeline.append(unwind_stage)
+    group_stage = build_group_stage(fields)
+    pipeline.append(group_stage)
+    results = run_pipeline(pipeline)
+    return format_results(results)
+'''

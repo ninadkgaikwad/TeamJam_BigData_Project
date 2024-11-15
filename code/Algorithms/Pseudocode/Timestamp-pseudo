@@ -1,0 +1,58 @@
+# Code to pull min and max timestamp from given collection to generate valid ranges for user on frontend
+#Example useage: get_min_max_timestamps("motionsensor", nested_field="acceleration")
+    #Without subgroup: get_min_max_timestamps("motionsensor")
+
+'''
+function get_min_max_timestamps(collection_name, nested_field=None):
+    """
+    Retrieve the minimum and maximum timestamp ranges for a specified collection.
+    
+    Parameters:
+    - collection_name (string): Name of the MongoDB collection to query.
+    - nested_field (string, optional): Name of the nested field containing the timestamp (e.g., "acceleration" in "motionsensor").
+    
+    Returns:
+    - Dictionary with 'min_timestamp' and 'max_timestamp' for the collection.
+    """
+    
+    # Connect to MongoDB
+    uri = "mongodb://localhost:27017/"
+    client = MongoClient(uri)
+    database = client.get_database("SensorDatabase")
+    collection = database.get_collection(collection_name)
+
+    # Initialize field path for the timestamp
+    if nested_field is not None:
+        # If there is a nested field, the path will be "nested_field.timestamp"
+        timestamp_field = nested_field + ".timestamp"
+    else:
+        # If no nested field, assume "timestamp" is a top-level field
+        timestamp_field = "timestamp"
+
+    # Construct the aggregation pipeline
+    pipeline = [
+        { "$unwind": "$" + nested_field } if nested_field else None,  # Unwind if there is a nested field
+        {
+            "$group": {
+                "_id": None,  # Group all documents
+                "min_timestamp": { "$min": "$" + timestamp_field },
+                "max_timestamp": { "$max": "$" + timestamp_field }
+            }
+        }
+    ]
+    # Remove None stages from the pipeline
+    pipeline = [stage for stage in pipeline if stage]
+
+    # Execute the aggregation pipeline
+    result = collection.aggregate(pipeline)
+
+    # Extract and return results if available
+    if result is not empty:
+        data = result[0]  # Only one result since we grouped all documents
+        return {
+            "min_timestamp": data["min_timestamp"],
+            "max_timestamp": data["max_timestamp"]
+        }
+    else:
+        return None  # No data found
+'''

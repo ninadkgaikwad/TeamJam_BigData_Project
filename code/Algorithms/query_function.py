@@ -1,7 +1,7 @@
 from pymongo import MongoClient
 import pandas as pd
 import matplotlib.pyplot as plt
-
+import time
 
 def get_sensor_statistics_generic(collection_name, recording_id=None, sensor_location=None, 
                                   start_timestamp=None, end_timestamp=None, fields=None, 
@@ -22,103 +22,78 @@ def get_sensor_statistics_generic(collection_name, recording_id=None, sensor_loc
     Returns:
     - DataFrame: A pandas DataFrame containing the statistics for each specified field.
     """
-    
+
     # Step 1: Connect to MongoDB
-    # Establish a connection to the MongoDB server running on localhost at port 27017.
-    # If your MongoDB server is on a different host or port, update the URI accordingly.
     uri = "mongodb://localhost:27017/"
     client = MongoClient(uri)
-    
-    # Access the specified database and collection
     database = client.get_database("SensorDatabase")
     collection = database.get_collection(collection_name)
 
-    # Step 2: Initialize the aggregation pipeline
-    # MongoDB's aggregation pipeline allows us to perform complex data transformations and calculations.
-    # We start by initializing an empty list that will hold each stage of the pipeline.
+    # Step 2: Create compound index for optimized querying
+    collection.create_index([("recording_id", 1), (f"{nested_field}.timestamp", 1)])
+
+    # Measure the start time for query execution
+    start_time = time.time()
+
+    # Step 3: Initialize the aggregation pipeline
     pipeline = []
 
-    # Step 3: Build match conditions
-    # We create a dictionary to store conditions for filtering the data.
-    # This dictionary is populated only if the corresponding parameters (recording_id, sensor_location, 
-    # start_timestamp, end_timestamp) are provided.
+    # Step 4: Build match conditions
     match_conditions = {}
     if recording_id:
-        # Filter documents by recording_id if it is provided.
         match_conditions["recording_id"] = recording_id
     if sensor_location:
-        # Filter documents by sensor_location if it is provided.
         match_conditions["sensor_location"] = sensor_location
     if start_timestamp and end_timestamp:
-        # If both start and end timestamps are provided, add a timestamp range filter.
-        # This filters the documents where the timestamp in the nested field falls within the range.
         match_conditions[f"{nested_field}.timestamp"] = {"$gte": start_timestamp, "$lte": end_timestamp}
     
-    # If we have any filter conditions, add a `$match` stage to the pipeline to filter documents accordingly.
     if match_conditions:
         pipeline.append({"$match": match_conditions})
 
-    # Step 4: Unwind the nested array
-    # `$unwind` is a MongoDB aggregation stage that "flattens" arrays.
-    # Here, it will deconstruct the specified nested array (e.g., "acceleration") so each element in 
-    # the array becomes a separate document in the pipeline. This allows us to perform calculations 
-    # on individual array elements rather than on the entire array.
+    # Step 5: Unwind the nested array
     pipeline.append({"$unwind": f"${nested_field}"})
 
-    # Step 5: Build the group stage for aggregations
-    # This stage will calculate statistics for the specified fields. 
-    # `_id: None` means that we want to aggregate all matching documents as a single group.
-    # We also initialize a `frequency` count to count the number of items in the group (like a row count).
+    # Step 6: Build the group stage for aggregations
     group_stage = {
         "$group": {
-            "_id": None,  # Group all matching documents together
-            "frequency": {"$sum": 1}  # Count the number of documents to get the frequency
+            "_id": None,
+            "frequency": {"$sum": 1}
         }
     }
     
-    # Step 6: Add calculations for each specified field
-    # For each field in the `fields` list (e.g., ["x", "y", "z"]), we add calculations to the `$group` stage.
-    # These include minimum (`$min`), maximum (`$max`), average (`$avg`), and standard deviation (`$stdDevPop`).
+    # Step 7: Add calculations for each specified field
     for field in fields:
-        # Construct the full path to the field within the nested array (e.g., "acceleration.x")
         field_path = f"{nested_field}.{field}"
-        
-        # Add each calculation to the group stage using the fully qualified path
         group_stage["$group"][f"min_{field}"] = {"$min": f"${field_path}"}
         group_stage["$group"][f"max_{field}"] = {"$max": f"${field_path}"}
         group_stage["$group"][f"avg_{field}"] = {"$avg": f"${field_path}"}
         group_stage["$group"][f"std_dev_{field}"] = {"$stdDevPop": f"${field_path}"}
 
-    # Append the `$group` stage to the pipeline once all fields have been added.
     pipeline.append(group_stage)
 
-    # Step 7: Execute the aggregation pipeline
-    # Run the pipeline on the collection to get the aggregated results.
-    # `collection.aggregate(pipeline)` executes the pipeline, and `list()` retrieves the output as a list.
+    # Step 8: Execute the aggregation pipeline
     results = list(collection.aggregate(pipeline))
+    execution_time = time.time() - start_time
+    print(f"Query Execution Time: {execution_time:.4f} seconds")
 
-    # Step 8: Convert the results to a pandas DataFrame
-    # If the results contain data, create a DataFrame from it for easy viewing and further processing.
+    # Step 9: Convert the results to a pandas DataFrame
     if results:
         df = pd.DataFrame(results)
-        
-        # Rename columns for clarity. For each field, set column names like "Min X", "Max X", etc.
-        rename_columns = {
-            "frequency": "Frequency",
-        }
+        rename_columns = {"frequency": "Frequency"}
         for field in fields:
-            # Update the column names to make them more readable in the DataFrame.
             rename_columns.update({
                 f"min_{field}": f"Min {field.capitalize()}",
                 f"max_{field}": f"Max {field.capitalize()}",
                 f"avg_{field}": f"Average {field.capitalize()}",
                 f"std_dev_{field}": f"{field.capitalize()} Std Dev"
             })
-        
-        # Apply the new column names to the DataFrame
         df.rename(columns=rename_columns, inplace=True)
+
+        # Add query execution time row
+        query_time_row = pd.DataFrame({"Frequency": ["Query Execution Time (seconds)"],
+                                       "Min X": [execution_time]})
+        df = pd.concat([df, query_time_row], ignore_index=True)
     else:
-        # If there were no results, create an empty DataFrame with the expected column names
         column_names = ["Frequency"]
         for field in fields:
             column_names.extend([
@@ -127,14 +102,39 @@ def get_sensor_statistics_generic(collection_name, recording_id=None, sensor_loc
             ])
         df = pd.DataFrame(columns=column_names)
 
-    # Step 9: Write to CSV if specified
-    # If an `output_csv` path is provided, save the DataFrame to a CSV file at that location.
+    # Step 10: Write to CSV if specified
     if output_csv:
         df.to_csv(output_csv, index=False)
         print(f"Results saved to {output_csv}")
 
-    # Return the DataFrame containing the statistics
     return df
+
+# Define parameters for calling the function
+collection_name = "motionsensor"
+recording_id = "User1-220617"
+sensor_location = "bag"
+start_timestamp = 149812029800000
+end_timestamp = 149812029899000
+fields = ["x", "y", "z"]
+nested_field = "acceleration"
+output_csv = "motion_sensor_statistics.csv"
+
+# Call the function to get sensor statistics
+df_stats = get_sensor_statistics_generic(
+    collection_name=collection_name,
+    recording_id=recording_id,
+    sensor_location=sensor_location,
+    start_timestamp=start_timestamp,
+    end_timestamp=end_timestamp,
+    fields=fields,
+    nested_field=nested_field,
+    output_csv=output_csv
+)
+
+# Display the DataFrame containing the statistics
+print("Sensor Statistics DataFrame:")
+print(df_stats)
+
 
 ################### ADDITIONAL NOTES ###############################
 
@@ -156,3 +156,5 @@ def get_sensor_statistics_generic(collection_name, recording_id=None, sensor_loc
 # Model uses motionsensor data and labels data to do it's prediction, relying on sensor stats
     #such as max, min, sd, freq, and using frequency spectrum analysis to capture periodicity and patterns in sensor data
     # then use activity levels to train the model (training using LSTM network or CNN)
+
+# Optimizations potentially with Spark when we implement the ML portion
