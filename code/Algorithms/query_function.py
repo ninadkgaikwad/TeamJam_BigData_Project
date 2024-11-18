@@ -110,14 +110,14 @@ def get_sensor_statistics_generic(collection_name, recording_id=None, sensor_loc
     return df
 
 # Define parameters for calling the function
-collection_name = "motionsensor"
+collection_name = "batterysensor"
 recording_id = "User1-220617"
 sensor_location = "bag"
-start_timestamp = 149812029800000
-end_timestamp = 149812029899000
-fields = ["x", "y", "z"]
-nested_field = "acceleration"
-output_csv = "motion_sensor_statistics.csv"
+start_timestamp = 1498120321440
+end_timestamp = 1498154531245
+fields = ["battery_level", "temperature"]
+nested_field = "battery_data"
+output_csv = "battery_sensor_statistics.csv"
 
 # Call the function to get sensor statistics
 df_stats = get_sensor_statistics_generic(

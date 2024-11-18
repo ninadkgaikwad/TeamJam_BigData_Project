@@ -1,3 +1,0 @@
-_id,Frequency,Min Still_confidence,Max Still_confidence,Average Still_confidence,Still_confidence Std Dev,Min On_foot_confidence,Max On_foot_confidence,Average On_foot_confidence,On_foot_confidence Std Dev,Min Walking_confidence,Max Walking_confidence,Average Walking_confidence,Walking_confidence Std Dev,Min Running_confidence,Max Running_confidence,Average Running_confidence,Running_confidence Std Dev
-,4245,0,100,23.26266195524146,37.808463202486564,0,100,29.97620730270907,40.330392275459985,0,100,26.97243816254417,38.47642502556515,0,100,3.0084805653710247,13.415790624923698
-
