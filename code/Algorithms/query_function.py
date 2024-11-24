@@ -3,11 +3,10 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import time
 
-def get_sensor_statistics_generic(collection_name, recording_id=None, sensor_location=None, 
-                                  start_timestamp=None, end_timestamp=None, fields=None, 
-                                  nested_field="acceleration", output_csv=None):
+def query_sensor_data(collection_name, recording_id=None, sensor_location=None, 
+                      start_timestamp=None, end_timestamp=None, nested_field=None):
     """
-    Query MongoDB for basic sensor statistics based on flexible criteria and specified fields.
+    Query MongoDB for sensor data based on flexible criteria and return a pandas DataFrame.
 
     Parameters:
     - collection_name (str): The name of the MongoDB collection.
@@ -15,14 +14,11 @@ def get_sensor_statistics_generic(collection_name, recording_id=None, sensor_loc
     - sensor_location (str, optional): The location of the sensor (e.g., "bag").
     - start_timestamp (int, optional): The starting timestamp of the query range.
     - end_timestamp (int, optional): The ending timestamp of the query range.
-    - fields (list, optional): A list of field names within the nested array to calculate statistics for.
-    - nested_field (str): The name of the nested field array (e.g., "ambient_data" or "api_confidence").
-    - output_csv (str, optional): Path to save the results to a CSV file.
+    - nested_field (str, optional): The name of the nested field array. If None or empty, no unwinding is done.
 
     Returns:
-    - DataFrame: A pandas DataFrame containing the statistics for each specified field.
+    - DataFrame: A pandas DataFrame containing the raw query results.
     """
-
     # Step 1: Connect to MongoDB
     uri = "mongodb://localhost:27017/"
     client = MongoClient(uri)
@@ -30,10 +26,10 @@ def get_sensor_statistics_generic(collection_name, recording_id=None, sensor_loc
     collection = database.get_collection(collection_name)
 
     # Step 2: Create compound index for optimized querying
-    collection.create_index([("recording_id", 1), (f"{nested_field}.timestamp", 1)])
-
-    # Measure the start time for query execution
-    start_time = time.time()
+    if nested_field:
+        collection.create_index([("recording_id", 1), (f"{nested_field}.timestamp", 1)])
+    else:
+        collection.create_index([("recording_id", 1)])
 
     # Step 3: Initialize the aggregation pipeline
     pipeline = []
@@ -45,96 +41,122 @@ def get_sensor_statistics_generic(collection_name, recording_id=None, sensor_loc
     if sensor_location:
         match_conditions["sensor_location"] = sensor_location
     if start_timestamp and end_timestamp:
-        match_conditions[f"{nested_field}.timestamp"] = {"$gte": start_timestamp, "$lte": end_timestamp}
+        timestamp_field = f"{nested_field}.timestamp" if nested_field else "timestamp"
+        match_conditions[timestamp_field] = {"$gte": start_timestamp, "$lte": end_timestamp}
     
     if match_conditions:
         pipeline.append({"$match": match_conditions})
 
-    # Step 5: Unwind the nested array
-    pipeline.append({"$unwind": f"${nested_field}"})
+    # Step 5: Unwind the nested array if nested_field is provided
+    if nested_field:
+        pipeline.append({"$unwind": f"${nested_field}"})
 
-    # Step 6: Build the group stage for aggregations
-    group_stage = {
-        "$group": {
-            "_id": None,
-            "frequency": {"$sum": 1}
-        }
-    }
-    
-    # Step 7: Add calculations for each specified field
-    for field in fields:
-        field_path = f"{nested_field}.{field}"
-        group_stage["$group"][f"min_{field}"] = {"$min": f"${field_path}"}
-        group_stage["$group"][f"max_{field}"] = {"$max": f"${field_path}"}
-        group_stage["$group"][f"avg_{field}"] = {"$avg": f"${field_path}"}
-        group_stage["$group"][f"std_dev_{field}"] = {"$stdDevPop": f"${field_path}"}
-
-    pipeline.append(group_stage)
-
-    # Step 8: Execute the aggregation pipeline
+    # Step 6: Execute the aggregation pipeline
     results = list(collection.aggregate(pipeline))
-    execution_time = time.time() - start_time
-    print(f"Query Execution Time: {execution_time:.4f} seconds")
 
-    # Step 9: Convert the results to a pandas DataFrame
+    # Convert the results to a pandas DataFrame
     if results:
         df = pd.DataFrame(results)
-        rename_columns = {"frequency": "Frequency"}
-        for field in fields:
-            rename_columns.update({
-                f"min_{field}": f"Min {field.capitalize()}",
-                f"max_{field}": f"Max {field.capitalize()}",
-                f"avg_{field}": f"Average {field.capitalize()}",
-                f"std_dev_{field}": f"{field.capitalize()} Std Dev"
-            })
-        df.rename(columns=rename_columns, inplace=True)
-
-        # Add query execution time row
-        query_time_row = pd.DataFrame({"Frequency": ["Query Execution Time (seconds)"],
-                                       "Min X": [execution_time]})
-        df = pd.concat([df, query_time_row], ignore_index=True)
     else:
-        column_names = ["Frequency"]
-        for field in fields:
-            column_names.extend([
-                f"Min {field.capitalize()}", f"Max {field.capitalize()}",
-                f"Average {field.capitalize()}", f"{field.capitalize()} Std Dev"
-            ])
-        df = pd.DataFrame(columns=column_names)
-
-    # Step 10: Write to CSV if specified
-    if output_csv:
-        df.to_csv(output_csv, index=False)
-        print(f"Results saved to {output_csv}")
+        df = pd.DataFrame()
 
     return df
 
-# Define parameters for calling the function
+
+def calculate_sensor_statistics(df, fields, nested_field=None, output_csv=None):
+    """
+    Calculate statistics for sensor data fields, print the transposed DataFrame, 
+    and save the transposed version with labeled rows to the CSV.
+
+    Parameters:
+    - df (DataFrame): The raw data DataFrame returned by the query function.
+    - fields (list): A list of field names to calculate statistics for.
+    - nested_field (str, optional): The name of the nested field array. If None, fields are expected at the top level.
+    - output_csv (str, optional): Path to save the results to a CSV file.
+
+    Returns:
+    - DataFrame: A transposed pandas DataFrame containing the calculated statistics.
+    """
+    if df.empty:
+        print("No data available for statistics calculation.")
+        return pd.DataFrame()
+
+    # Measure the start time for statistics calculation
+    start_time = time.time()
+
+    # Extract relevant fields for statistics
+    stats = {}
+    for field in fields:
+        field_path = f"{nested_field}.{field}" if nested_field else field
+        field_values = df.get(field_path, pd.Series(dtype='float'))
+
+        if field_values.empty:
+            continue
+
+        stats[f"Min {field.capitalize()}"] = field_values.min()
+        stats[f"Max {field.capitalize()}"] = field_values.max()
+        stats[f"Average {field.capitalize()}"] = field_values.mean()
+        stats[f"{field.capitalize()} Std Dev"] = field_values.std()
+
+    # Convert statistics to a DataFrame
+    stats_df = pd.DataFrame([stats], index=["Sensor Statistics"])
+    execution_time = time.time() - start_time
+
+    # Add execution time row
+    execution_time_row = pd.DataFrame(
+        {"Query Execution Time (seconds)": [execution_time]},
+        index=["Execution Time"]
+    )
+
+    # Combine statistics and execution time into one DataFrame
+    combined_df = pd.concat([stats_df, execution_time_row], axis=0)
+
+    # Transpose the DataFrame
+    transposed_df = combined_df.transpose()
+
+    # Print the transposed DataFrame
+    print("\nCalculated Sensor Statistics (Transposed):")
+    print(transposed_df)
+    print(f"\nExecution Time: {execution_time:.4f} seconds")
+
+    # Write to CSV if specified
+    if output_csv:
+        transposed_df.to_csv(output_csv)
+        print(f"\nResults saved to {output_csv}")
+
+    return transposed_df
+
+# Define parameters for calling the functions
 collection_name = "batterysensor"
 recording_id = "User1-220617"
 sensor_location = "bag"
-start_timestamp = 1498120321440
-end_timestamp = 1498154531245
-fields = ["battery_level", "temperature"]
-nested_field = "battery_data"
+start_timestamp = 1498137071183
+end_timestamp = 1498138095009
+fields = ["battery_level", "temperature"]  # Assuming these are top-level fields
+nested_field = "battery_data"  # Indicating no nested field
 output_csv = "battery_sensor_statistics.csv"
 
-# Call the function to get sensor statistics
-df_stats = get_sensor_statistics_generic(
+# Step 1: Query the sensor data
+df_raw = query_sensor_data(
     collection_name=collection_name,
     recording_id=recording_id,
     sensor_location=sensor_location,
     start_timestamp=start_timestamp,
     end_timestamp=end_timestamp,
+    nested_field=nested_field
+)
+
+# Step 2: Calculate the sensor statistics
+df_stats = calculate_sensor_statistics(
+    df=df_raw,
     fields=fields,
     nested_field=nested_field,
     output_csv=output_csv
 )
 
-# Display the DataFrame containing the statistics
+# Display the statistics DataFrame
 print("Sensor Statistics DataFrame:")
 print(df_stats)
-
 
 ################### ADDITIONAL NOTES ###############################
 
