@@ -166,17 +166,27 @@ def load_sensor_positions(recording_id, sensor_name):
     try:
         client = MongoClient(URI)
         database = client.get_database("SensorDatabase")
+        
+        # Return None or a default value if LabelSensor is selected
+        if sensor_name.lower() == "labelsensor":
+            return None  # or return ["default"] if you need a list format
+        
+        # For other sensors, query distinct sensor locations
         return database[sensor_name].distinct("sensor_location", {"recording_id": recording_id})
     except Exception as e:
         print(f"Error loading sensor positions: {e}")
         return []
+
 
 @app.callback(
     Output("Sensor_Position_DropDown", "options"),
     Input("sensor_position_store", "data")
 )
 def populate_sensor_position_dropdown(positions):
+    if positions is None:  # Handle the LabelSensor case
+        return [{"label": "Not Applicable", "value": "default"}]
     return [{"label": pos, "value": pos} for pos in positions or []]
+
 
 @app.callback(
     Output("sensor_field_store", "data"),
@@ -190,14 +200,31 @@ def load_sensor_fields(sensor_position, recording_id, sensor_name):
         client = MongoClient(URI)
         database = client.get_database("SensorDatabase")
         collection = database[sensor_name]
+
+        # Special handling for LabelSensor
+        if sensor_name.lower() == "labelsensor":
+            if recording_id:
+                # Return label_data directly
+                return ["label_data"]
+
+        # Default behavior for other sensors
         fields = set()
-        for doc in collection.find({"recording_id": recording_id, "sensor_location": sensor_position}, {"_id": 0}):
+        query_filter = {"recording_id": recording_id}
+        if sensor_position and sensor_position != "default":
+            query_filter["sensor_location"] = sensor_position
+
+        for doc in collection.find(query_filter, {"_id": 0}):
             fields.update(doc.keys())
+
         fields.discard("sensor_location")
         return sorted(fields)
+
     except Exception as e:
         print(f"Error loading sensor fields: {e}")
         return []
+
+
+
 
 @app.callback(
     Output("Sensor_Field_DropDown", "options"),
@@ -342,20 +369,57 @@ def query_label_sensor_data(uri, collection_name, start_timestamp=None, end_time
     database = client.get_database("SensorDatabase")
     collection = database[collection_name]
 
-    # Build query pipeline
-    pipeline = [{"$unwind": "$label_data"}]
-    if start_timestamp and end_timestamp:
-        pipeline.insert(0, {"$match": {"label_data.timestamp": {"$gte": start_timestamp, "$lte": end_timestamp}}})
+    # Build aggregation pipeline
+    pipeline = []
 
-    # Query the data
+    # Match documents within the timestamp range
+    match_stage = {"$match": {}}
+    if start_timestamp and end_timestamp:
+        match_stage["$match"]["label_data.timestamp"] = {"$gte": start_timestamp, "$lte": end_timestamp}
+    if match_stage["$match"]:
+        pipeline.append(match_stage)
+
+    # Transform non-list label_data into list
+    pipeline.append({
+        "$addFields": {
+            "label_data": {
+                "$cond": {
+                    "if": {"$isArray": "$label_data"},
+                    "then": "$label_data",
+                    "else": {"$literal": ["$label_data"]}
+                }
+            }
+        }
+    })
+
+    # Unwind the label_data field to create one document per label entry
+    pipeline.append({"$unwind": "$label_data"})
+
+    # Project the necessary fields
+    pipeline.append({
+        "$project": {
+            "timestamp": "$label_data.timestamp",
+            "coarse_label": "$label_data.coarse_label",
+            "fine_label": "$label_data.fine_label",
+            "road_label": "$label_data.road_label",
+            "traffic_label": "$label_data.traffic_label",
+            "tunnels_label": "$label_data.tunnels_label",
+            "social_label": "$label_data.social_label",
+            "food_label": "$label_data.food_label",
+            "recording_id": 1
+        }
+    })
+
+    # Execute the query
     results = list(collection.aggregate(pipeline))
     if not results:
         return pd.DataFrame()
 
-    # Convert to DataFrame
-    df = pd.json_normalize(results, "label_data", ["recording_id"], record_prefix="")
+    # Convert results to DataFrame
+    df = pd.DataFrame(results)
     df = map_labels(df)
     return df
+
 
 
 @app.callback(
@@ -377,43 +441,46 @@ def compute_statistics_and_plot(n_clicks, sensor_name, recording_id, sensor_posi
         return [], [], px.bar(title="Invalid Input: Please fill all fields")
 
     # Specialized handling for LabelSensor collection
-    if sensor_name == "LabelSensor":
+    if sensor_name.lower() == "labelsensor":
         df = query_label_sensor_data(URI, sensor_name, start_timestamp, end_timestamp)
         if df.empty:
             return [], [], px.bar(title="No Data Available for LabelSensor")
 
-        # Calculate statistics for LabelSensor
-        numeric_fields = [col for col in df.columns if pd.api.types.is_numeric_dtype(df[col]) and "_description" not in col]
-        stats = []
-        for field in numeric_fields:
-            stats.append({
-                "Field": field,
-                "Min": df[field].min(),
-                "Max": df[field].max(),
-                "Mean": df[field].mean(),
-                "Std Dev": df[field].std(),
-                "Frequency": len(df[field].dropna())
-            })
-        stats_df = pd.DataFrame(stats)
+        # Compute label statistics
+        label_stats = []
+        for label_field, mapping in LABEL_MAPPINGS.items():
+            if label_field in df.columns:
+                frequencies = df[label_field].value_counts().sort_index()
+                for value, freq in frequencies.items():
+                    label_stats.append({
+                        "Label": mapping.get(value, "Unknown"),
+                        "Mean": df[label_field].mean(),
+                        "Min": df[label_field].min(),
+                        "Max": df[label_field].max(),
+                        "Std Dev": df[label_field].std(),
+                        "Frequency": freq
+                    })
+        stats_df = pd.DataFrame(label_stats)
 
         # Format table data and columns
         stats_data = stats_df.to_dict("records")
         stats_columns = [{"name": col, "id": col} for col in stats_df.columns]
 
-        # Prepare plot data for LabelSensor
-        plot_data = pd.DataFrame()
-        for field in numeric_fields:
-            counts = df[field].value_counts().reset_index()
-            counts.columns = ["Value", "Frequency"]
-            counts["Field"] = field
-            counts["Description"] = counts["Value"].map(LABEL_MAPPINGS[field])
-            plot_data = pd.concat([plot_data, counts], ignore_index=True)
-
-        # Create bar chart for LabelSensor
+        # Create bar chart for label frequency
+        plot_data = []
+        for label_field, mapping in LABEL_MAPPINGS.items():
+            if label_field in df.columns:
+                field_counts = df[label_field].value_counts().reset_index()
+                field_counts.columns = ["Value", "Frequency"]
+                field_counts["Label"] = field_counts["Value"].map(mapping)
+                field_counts["Field"] = label_field
+                plot_data.append(field_counts)
+        
+        plot_data = pd.concat(plot_data, ignore_index=True)
         fig = px.bar(
             plot_data,
             x="Frequency",
-            y="Description",
+            y="Label",
             color="Field",
             orientation="h",
             title="Label Frequency Distribution",
@@ -472,6 +539,7 @@ def compute_statistics_and_plot(n_clicks, sensor_name, recording_id, sensor_posi
     return stats_data, stats_columns, fig
 
 
+
 @app.callback(
     Output("Start_Datetime_Label", "children"),
     Output("End_Datetime_Label", "children"),
@@ -491,21 +559,40 @@ def display_timestamps(sensor_field, sensor_position, recording_id, sensor_name)
         # Initialize an empty list for timestamps
         timestamps = []
 
-        # Query the database for the selected sensor field
-        for doc in collection.find(
-            {"recording_id": recording_id, "sensor_location": sensor_position},
-            {f"{sensor_field}.timestamp": 1, "_id": 0}
-        ):
-            if sensor_field in doc:
-                for entry in doc[sensor_field]:
-                    if "timestamp" in entry:
-                        try:
-                            timestamp = float(entry["timestamp"])
-                            if timestamp > 0:  # Ensure valid positive timestamp
-                                timestamps.append(timestamp)
-                        except ValueError:
-                            print(f"Invalid timestamp encountered: {entry['timestamp']}")
+        # Special handling for LabelSensor
+        if sensor_name.lower() == "labelsensor" and sensor_field == "label_data":
+            # Query the label_data array directly
+            for doc in collection.find(
+                {"recording_id": recording_id},
+                {"label_data.timestamp": 1, "_id": 0}
+            ):
+                if "label_data" in doc:
+                    for entry in doc["label_data"]:
+                        if "timestamp" in entry:
+                            try:
+                                timestamp = float(entry["timestamp"])
+                                if timestamp > 0:  # Ensure valid positive timestamp
+                                    timestamps.append(timestamp)
+                            except ValueError:
+                                print(f"Invalid timestamp encountered: {entry['timestamp']}")
+        
+        else:
+            # Default behavior for other sensors
+            for doc in collection.find(
+                {"recording_id": recording_id, "sensor_location": sensor_position},
+                {f"{sensor_field}.timestamp": 1, "_id": 0}
+            ):
+                if sensor_field in doc:
+                    for entry in doc[sensor_field]:
+                        if "timestamp" in entry:
+                            try:
+                                timestamp = float(entry["timestamp"])
+                                if timestamp > 0:  # Ensure valid positive timestamp
+                                    timestamps.append(timestamp)
+                            except ValueError:
+                                print(f"Invalid timestamp encountered: {entry['timestamp']}")
 
+        # Process timestamps
         if timestamps:
             timestamps.sort()
             min_time = timestamps[0]
@@ -516,8 +603,9 @@ def display_timestamps(sensor_field, sensor_position, recording_id, sensor_name)
     except Exception as e:
         print(f"Error retrieving timestamps: {e}")
         return "Error occurred", "Error occurred"
+
     
     
 # Running the App
 if __name__ == '__main__':
-    app.run_server(debug=True, port=4060)
+    app.run_server(debug=True, port=4010)
