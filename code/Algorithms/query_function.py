@@ -132,6 +132,9 @@ recording_id = "User1-220617"
 sensor_location = "bag"
 start_timestamp = 1498137071183
 end_timestamp = 1498138095009
+
+#2017-06-22 22:51:11.183
+#End Datetime (UTC): 2017-06-22 23:08:15.009
 fields = ["battery_level", "temperature"]  # Assuming these are top-level fields
 nested_field = "battery_data"  # Indicating no nested field
 output_csv = "battery_sensor_statistics.csv"

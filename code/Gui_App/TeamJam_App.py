@@ -1,4 +1,3 @@
-# Importing Desired Modules
 from pymongo import MongoClient
 from datetime import datetime, timezone
 import pandas as pd
@@ -6,17 +5,13 @@ from dash import Dash, dcc, html, Input, Output, State, dash_table
 import dash_bootstrap_components as dbc
 import plotly.express as px
 
-# Importing Custom Modules
 import App_Func_Module as AppFuncs
 
-# Defining App Constants
 URI = "mongodb://localhost:27017/"
-DATA_DF = pd.DataFrame()  # Placeholder for queried data
+DATA_DF = pd.DataFrame()
 
-# Creating the App Object and Selecting Theme
-app = Dash(__name__, external_stylesheets=[dbc.themes.SOLAR])
+app = Dash(__name__, external_stylesheets=[dbc.themes.SOLAR], suppress_callback_exceptions=True)
 
-# Creating the App Layout
 app.layout = dbc.Container([
     dcc.Store(id="sensor_field_store"),
     dcc.Store(id="sensor_name_store"),
@@ -24,20 +19,17 @@ app.layout = dbc.Container([
     dcc.Store(id="sensor_position_store"),
 
     dbc.Row([dbc.Col([html.H1("Sussex-Huawei Locomotion Dataset", className='text-center text-primary mb-4')], width=12)]),
-
     dbc.Row([dbc.Col([html.Br()], width=12)]),
 
     dbc.Row([dbc.Col([html.Button('1. Connect To Database ', id='Connect_DB_Button', className="btn btn-primary btn-lg col-12")], width=12)]),
-
     dbc.Row([dbc.Col([html.Br()], width=12)]),
 
     dbc.Row([
         dbc.Col([html.Label("2. Select Sensor Name:", className='text-left text-secondary mb-4')], width=3),
         dbc.Col([dcc.Dropdown(id='Sensor_Name_DropDown', options=[], value=None)], width=3),
-        dbc.Col([html.Label("3. Select Recording ID:")], width=3),
+        dbc.Col([html.Label("3. Select Recording ID:", className='text-left text-secondary mb-4')], width=3),
         dbc.Col([dcc.Dropdown(id='Recording_ID_DropDown', options=[], value=None)], width=3),
     ], justify="center", align="center"),
-
     dbc.Row([dbc.Col([html.Br()], width=12)]),
 
     dbc.Row([
@@ -46,29 +38,79 @@ app.layout = dbc.Container([
         dbc.Col([html.Label("5. Select Sensor Field:", className='text-left text-secondary mb-4')], width=3),
         dbc.Col([dcc.Dropdown(id='Sensor_Field_DropDown', options=[], value=None)], width=3),
     ], justify="center", align="center"),
-
     dbc.Row([dbc.Col([html.Br()], width=12)]),
 
     dbc.Row([
-        dbc.Col([html.Label("Starting Date Time of Selected Data:")], width=3),
-        dbc.Col([html.Label("mm/dd/yyyy HH:MM:SS", id='Start_Datetime_Label')], width=3),
-        dbc.Col([html.Label("Ending Date Time of Selected Data:")], width=3),
-        dbc.Col([html.Label("mm/dd/yyyy HH:MM:SS", id='End_DateTime_Label')], width=3),
+        dbc.Col([html.Label("Starting Date Time of Selected Data:", className='text-left text-secondary mb-4')], width=3),
+        dbc.Col([html.Label("MM/DD/YYYY HH:MM:SS", id='Start_Datetime_Label')], width=3),
+        dbc.Col([html.Label("Ending Date Time of Selected Data:", className='text-left text-secondary mb-4')], width=3),
+        dbc.Col([html.Label("MM/DD/YYYY HH:MM:SS", id='End_Datetime_Label')], width=3),
     ]),
-
     dbc.Row([dbc.Col([html.Br()], width=12)]),
 
     dbc.Row([
-        dbc.Col([html.Button('8. Compute Data Statistics', id='Statistics_Button', className="btn btn-primary btn-lg col-12")], width=12)
+        dbc.Col([html.Label("6. Enter Start Timestamp (UNIX):", className='text-left text-secondary mb-4')], width=6),
+        dbc.Col([
+            dcc.Input(
+                id="Start_Timestamp_Input",
+                type="number",
+                placeholder="Enter start UNIX timestamp"
+            )
+        ], width=6),
     ], justify="center", align="center"),
-
+    dbc.Row([
+        dbc.Col([html.Label("7. Enter End Timestamp (UNIX):", className='text-left text-secondary mb-4')], width=6),
+        dbc.Col([
+            dcc.Input(
+                id="End_Timestamp_Input",
+                type="number",
+                placeholder="Enter end UNIX timestamp"
+            )
+        ], width=6),
+    ], justify="center", align="center"),
     dbc.Row([dbc.Col([html.Br()], width=12)]),
 
+    dbc.Row([dbc.Col([html.Button('8. Compute Data Statistics', id='Statistics_Button', className="btn btn-primary btn-lg col-12")], width=12)]),
+    dbc.Row([dbc.Col([html.Br()], width=12)]),
+    dbc.Row([
+        dbc.Col([html.H3("Data Statistics Table:", className='text-left text-secondary mb-4')]),
+        dbc.Col([dash_table.DataTable(id='Data_Statistics_Table', columns=[], data=[], editable=True)], width=12),
+    ], justify="center", align="center"),
+    dbc.Row([dbc.Col([html.Br()], width=12)]),
     dbc.Row([
         dbc.Col([html.H3("Data Time Series Plot:", className='text-left text-secondary mb-4')], width=12),
         dbc.Col([dcc.Graph(id='Data_TimeSeries_Plot', figure={})], width=12),
     ], justify="center", align="center"),
 ], fluid=True)
+
+LABEL_MAPPINGS = {
+    "coarse_label": {
+        0: "Null", 1: "Still", 2: "Walking", 3: "Running",
+        4: "Biking", 5: "Car", 6: "Bus", 7: "Train", 8: "Subway"
+    },
+    "fine_label": {
+        0: "Null", 1: "Still", 2: "Walking", 3: "Running",
+        4: "Jogging", 5: "Fast Walking", 6: "Sprinting", 7: "Climbing",
+        8: "Descending", 9: "Biking", 10: "Driving", 11: "Riding",
+        12: "Standing", 13: "Sitting", 14: "Lying Down",
+        15: "Cooking", 16: "Eating", 17: "Drinking", 18: "Typing"
+    },
+    "road_label": {
+        0: "Null", 1: "City", 2: "Motorway", 3: "Countryside", 4: "Dirt Road"
+    },
+    "traffic_label": {0: "Null", 1: "Heavy Traffic"},
+    "tunnels_label": {0: "Null", 1: "Tunnel"},
+    "social_label": {0: "Null", 1: "Social"},
+    "food_label": {1: "Eating", 2: "Drinking", 3: "Both", 4: "Null"}
+}
+
+def map_labels(df):
+    for label_field, mapping in LABEL_MAPPINGS.items():
+        if label_field in df.columns:
+            df[f"{label_field}_description"] = df[label_field].map(mapping)
+    return df
+
+########################################################################################################################################################
 
 # Callbacks
 
@@ -164,9 +206,275 @@ def load_sensor_fields(sensor_position, recording_id, sensor_name):
 def populate_sensor_field_dropdown(fields):
     return [{"label": field, "value": field} for field in fields or []]
 
+def validate_parameter(param, param_name):
+    if not isinstance(param, str) or not param.strip():
+        raise ValueError(f"{param_name} must be a non-empty string. Received: {param}")
+
+def query_sensor_data(uri, collection_name, recording_id=None, sensor_location=None, 
+                      start_timestamp=None, end_timestamp=None, nested_field=None):
+    """
+    Query MongoDB for sensor data based on flexible criteria and dynamically extract nested fields.
+
+    Parameters:
+    - uri (str): MongoDB connection URI.
+    - collection_name (str): Name of the MongoDB collection.
+    - recording_id (str, optional): Recording ID to filter data.
+    - sensor_location (str, optional): Sensor location to filter data.
+    - start_timestamp (int, optional): Starting timestamp of the query range.
+    - end_timestamp (int, optional): Ending timestamp of the query range.
+    - nested_field (str, optional): Name of the nested field array to unwind.
+
+    Returns:
+    - DataFrame: A pandas DataFrame containing the flattened results.
+    - list: List of numeric fields in the DataFrame.
+    - list: List of string fields in the DataFrame (excluding specified fields).
+    """
+    client = MongoClient(uri)
+    database = client.get_database("SensorDatabase")
+    collection = database.get_collection(collection_name)
+
+    pipeline = []
+
+    # Build match conditions
+    match_conditions = {}
+    if recording_id:
+        match_conditions["recording_id"] = recording_id
+    if sensor_location:
+        match_conditions["sensor_location"] = sensor_location
+    if start_timestamp and end_timestamp:
+        timestamp_field = f"{nested_field}.timestamp" if nested_field else "timestamp"
+        match_conditions[timestamp_field] = {"$gte": start_timestamp, "$lte": end_timestamp}
+    
+    if match_conditions:
+        pipeline.append({"$match": match_conditions})
+
+    # Unwind the nested field if provided
+    if nested_field:
+        pipeline.append({"$unwind": f"${nested_field}"})
+
+    # Dynamically project all fields within the nested field
+    if nested_field:
+        pipeline.append({
+            "$project": {
+                "_id": 0,
+                "recording_id": 1,
+                "sensor_location": 1,
+                f"{nested_field}": 1  # Include the entire nested document
+            }
+        })
+
+    # Execute the query
+    results = list(collection.aggregate(pipeline))
+    if not results:
+        print("No data found for the given criteria.")
+        return pd.DataFrame(), [], []
+
+    # Convert results to a DataFrame
+    df = pd.DataFrame(results)
+
+    # Flatten the nested field if it exists
+    if nested_field and nested_field in df.columns:
+        nested_data = pd.json_normalize(df[nested_field])  # Flatten nested JSON
+        df = pd.concat([df.drop(columns=[nested_field]), nested_data], axis=1)
+
+    # Identify numeric and string fields
+    numeric_fields = [col for col in df.columns if pd.api.types.is_numeric_dtype(df[col])]
+    excluded_string_fields = {"timestamp", "recording_id", "sensor_location"}
+    string_fields = [
+        col for col in df.columns
+        if pd.api.types.is_string_dtype(df[col]) and col not in excluded_string_fields
+    ]
+
+    print("Extracted DataFrame Head:")
+    print(df.head())
+    print("Numeric Fields:", numeric_fields)
+    print("String Fields:", string_fields)
+
+    return df, numeric_fields, string_fields
+
+
+# Calculate Sensor Statistics
+def calculate_sensor_statistics(df):
+    """
+    Calculate statistics for numeric and string fields in a DataFrame.
+
+    Parameters:
+    - df (DataFrame): The input DataFrame.
+
+    Returns:
+    - DataFrame: A DataFrame containing calculated statistics for each field.
+    """
+    stats = []
+
+    for column in df.columns:
+        if pd.api.types.is_numeric_dtype(df[column]):
+            stats.append({
+                "Field": column,
+                "Min": df[column].min(),
+                "Max": df[column].max(),
+                "Mean": df[column].mean(),
+                "Std Dev": df[column].std(),
+                "Frequency": len(df[column].dropna())
+            })
+        elif pd.api.types.is_string_dtype(df[column]):
+            stats.append({
+                "Field": column,
+                "Value Counts": df[column].value_counts().to_dict()
+            })
+
+    return pd.DataFrame(stats)
+
+
+def query_label_sensor_data(uri, collection_name, start_timestamp=None, end_timestamp=None):
+    """
+    Query MongoDB for LabelSensor data.
+
+    Parameters:
+    - uri (str): MongoDB connection URI.
+    - collection_name (str): Name of the MongoDB collection.
+    - start_timestamp (int, optional): Starting timestamp of the query range.
+    - end_timestamp (int, optional): Ending timestamp of the query range.
+
+    Returns:
+    - DataFrame: A pandas DataFrame containing label sensor data.
+    """
+    client = MongoClient(uri)
+    database = client.get_database("SensorDatabase")
+    collection = database[collection_name]
+
+    # Build query pipeline
+    pipeline = [{"$unwind": "$label_data"}]
+    if start_timestamp and end_timestamp:
+        pipeline.insert(0, {"$match": {"label_data.timestamp": {"$gte": start_timestamp, "$lte": end_timestamp}}})
+
+    # Query the data
+    results = list(collection.aggregate(pipeline))
+    if not results:
+        return pd.DataFrame()
+
+    # Convert to DataFrame
+    df = pd.json_normalize(results, "label_data", ["recording_id"], record_prefix="")
+    df = map_labels(df)
+    return df
+
+
+@app.callback(
+    Output("Data_Statistics_Table", "data"),
+    Output("Data_Statistics_Table", "columns"),
+    Output("Data_TimeSeries_Plot", "figure"),
+    Input("Statistics_Button", "n_clicks"),
+    State("Sensor_Name_DropDown", "value"),
+    State("Recording_ID_DropDown", "value"),
+    State("Sensor_Position_DropDown", "value"),
+    State("Sensor_Field_DropDown", "value"),
+    State("Start_Timestamp_Input", "value"),
+    State("End_Timestamp_Input", "value"),
+    prevent_initial_call=True
+)
+def compute_statistics_and_plot(n_clicks, sensor_name, recording_id, sensor_position, sensor_field, start_timestamp, end_timestamp):
+    # Validate inputs
+    if not all([sensor_name, recording_id, start_timestamp, end_timestamp]):
+        return [], [], px.bar(title="Invalid Input: Please fill all fields")
+
+    # Specialized handling for LabelSensor collection
+    if sensor_name == "LabelSensor":
+        df = query_label_sensor_data(URI, sensor_name, start_timestamp, end_timestamp)
+        if df.empty:
+            return [], [], px.bar(title="No Data Available for LabelSensor")
+
+        # Calculate statistics for LabelSensor
+        numeric_fields = [col for col in df.columns if pd.api.types.is_numeric_dtype(df[col]) and "_description" not in col]
+        stats = []
+        for field in numeric_fields:
+            stats.append({
+                "Field": field,
+                "Min": df[field].min(),
+                "Max": df[field].max(),
+                "Mean": df[field].mean(),
+                "Std Dev": df[field].std(),
+                "Frequency": len(df[field].dropna())
+            })
+        stats_df = pd.DataFrame(stats)
+
+        # Format table data and columns
+        stats_data = stats_df.to_dict("records")
+        stats_columns = [{"name": col, "id": col} for col in stats_df.columns]
+
+        # Prepare plot data for LabelSensor
+        plot_data = pd.DataFrame()
+        for field in numeric_fields:
+            counts = df[field].value_counts().reset_index()
+            counts.columns = ["Value", "Frequency"]
+            counts["Field"] = field
+            counts["Description"] = counts["Value"].map(LABEL_MAPPINGS[field])
+            plot_data = pd.concat([plot_data, counts], ignore_index=True)
+
+        # Create bar chart for LabelSensor
+        fig = px.bar(
+            plot_data,
+            x="Frequency",
+            y="Description",
+            color="Field",
+            orientation="h",
+            title="Label Frequency Distribution",
+            hover_data={"Value": True, "Field": True}
+        )
+        return stats_data, stats_columns, fig
+
+    # General handling for other collections
+    df, numeric_fields, string_fields = query_sensor_data(
+        URI,
+        sensor_name,
+        recording_id=recording_id,
+        sensor_location=sensor_position,
+        start_timestamp=start_timestamp,
+        end_timestamp=end_timestamp,
+        nested_field=sensor_field
+    )
+
+    if df.empty:
+        return [], [], px.bar(title="No Data Available")
+
+    # Compute statistics for general collections
+    stats = []
+    for field in numeric_fields:
+        stats.append({
+            "Field": field,
+            "Min": df[field].min(),
+            "Max": df[field].max(),
+            "Mean": df[field].mean(),
+            "Std Dev": df[field].std(),
+            "Frequency": len(df[field].dropna())
+        })
+    stats_df = pd.DataFrame(stats)
+
+    # Format table data and columns
+    stats_data = stats_df.to_dict("records")
+    stats_columns = [{"name": col, "id": col} for col in stats_df.columns]
+
+    # Prepare plot data for general collections
+    plot_data = pd.DataFrame()
+    for field in string_fields:
+        counts = df[field].value_counts().reset_index()
+        counts.columns = ["Value", "Frequency"]
+        counts["Field"] = field
+        plot_data = pd.concat([plot_data, counts], ignore_index=True)
+
+    # Create bar chart for general collections
+    fig = px.bar(
+        plot_data,
+        x="Frequency",
+        y="Value",
+        color="Field",
+        orientation="h",
+        title=f"Frequency Distribution of String Fields in {sensor_field}"
+    )
+    return stats_data, stats_columns, fig
+
+
 @app.callback(
     Output("Start_Datetime_Label", "children"),
-    Output("End_DateTime_Label", "children"),
+    Output("End_Datetime_Label", "children"),
     Input("Sensor_Field_DropDown", "value"),
     State("Sensor_Position_DropDown", "value"),
     State("Recording_ID_DropDown", "value"),
@@ -175,23 +483,41 @@ def populate_sensor_field_dropdown(fields):
 )
 def display_timestamps(sensor_field, sensor_position, recording_id, sensor_name):
     try:
+        # Connect to the database
         client = MongoClient(URI)
         database = client.get_database("SensorDatabase")
         collection = database[sensor_name]
+
+        # Initialize an empty list for timestamps
         timestamps = []
-        for doc in collection.find({"recording_id": recording_id, "sensor_location": sensor_position}, {f"{sensor_field}.timestamp": 1, "_id": 0}):
+
+        # Query the database for the selected sensor field
+        for doc in collection.find(
+            {"recording_id": recording_id, "sensor_location": sensor_position},
+            {f"{sensor_field}.timestamp": 1, "_id": 0}
+        ):
             if sensor_field in doc:
-                timestamps += [entry["timestamp"] for entry in doc[sensor_field] if "timestamp" in entry]
-        timestamps.sort()
+                for entry in doc[sensor_field]:
+                    if "timestamp" in entry:
+                        try:
+                            timestamp = float(entry["timestamp"])
+                            if timestamp > 0:  # Ensure valid positive timestamp
+                                timestamps.append(timestamp)
+                        except ValueError:
+                            print(f"Invalid timestamp encountered: {entry['timestamp']}")
+
         if timestamps:
-            min_time = datetime.fromtimestamp(timestamps[0] / 1000, tz=timezone.utc).strftime("%m/%d/%Y %H:%M:%S")
-            max_time = datetime.fromtimestamp(timestamps[-1] / 1000, tz=timezone.utc).strftime("%m/%d/%Y %H:%M:%S")
-            return min_time, max_time
-        return "Not available", "Not available"
-    except Exception as e:
-        print(f"Error retrieving timestamps: {e}")
+            timestamps.sort()
+            min_time = timestamps[0]
+            max_time = timestamps[-1]
+            return f"Min Timestamp: {min_time}", f"Max Timestamp: {max_time}"
         return "Not available", "Not available"
 
+    except Exception as e:
+        print(f"Error retrieving timestamps: {e}")
+        return "Error occurred", "Error occurred"
+    
+    
 # Running the App
 if __name__ == '__main__':
-    app.run_server(port=4030)
+    app.run_server(debug=True, port=4060)
