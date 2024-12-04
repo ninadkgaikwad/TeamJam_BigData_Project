@@ -133,7 +133,11 @@ def load_sensor_names(n_clicks):
     Input("sensor_name_store", "data")
 )
 def populate_sensor_name_dropdown(sensor_names):
-    return [{"label": name, "value": name} for name in sensor_names or []]
+    # Filter out 'userdata' and 'recording_data'
+    filtered_sensor_names = [name for name in (sensor_names or []) if name not in ["userdata", "recordingdata"]]
+    return [{"label": name, "value": name} for name in filtered_sensor_names]
+
+
 
 @app.callback(
     Output("recording_id_store", "data"),
@@ -236,6 +240,35 @@ def populate_sensor_field_dropdown(fields):
 def validate_parameter(param, param_name):
     if not isinstance(param, str) or not param.strip():
         raise ValueError(f"{param_name} must be a non-empty string. Received: {param}")
+
+@app.callback(
+    Output("Start_Timestamp_Input", "style"),
+    Output("End_Timestamp_Input", "style"),
+    Input("Start_Timestamp_Input", "value"),
+    Input("End_Timestamp_Input", "value"),
+    State("Start_Datetime_Label", "children"),
+    State("End_Datetime_Label", "children"),
+)
+def validate_timestamps(start_input, end_input, min_timestamp_label, max_timestamp_label):
+    try:
+        # Extract the numeric min and max timestamps
+        min_timestamp = float(min_timestamp_label.split(": ")[-1])
+        max_timestamp = float(max_timestamp_label.split(": ")[-1])
+
+        # Default styles
+        valid_style = {"borderColor": "green"}
+        invalid_style = {"borderColor": "red"}
+
+        # Validate start and end timestamps
+        start_style = valid_style if min_timestamp <= (start_input or 0) <= max_timestamp else invalid_style
+        end_style = valid_style if min_timestamp <= (end_input or 0) <= max_timestamp else invalid_style
+
+        return start_style, end_style
+    except (ValueError, IndexError):
+        # Handle errors in parsing or missing timestamps
+        error_style = {"borderColor": "red"}
+        return error_style, error_style
+
 
 def query_sensor_data(uri, collection_name, recording_id=None, sensor_location=None, 
                       start_timestamp=None, end_timestamp=None, nested_field=None):
