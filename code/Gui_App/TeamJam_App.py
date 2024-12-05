@@ -235,6 +235,7 @@ def load_sensor_fields(sensor_position, recording_id, sensor_name):
     Input("sensor_field_store", "data")
 )
 def populate_sensor_field_dropdown(fields):
+    print("Dropdown fields:", fields) 
     return [{"label": field, "value": field} for field in fields or []]
 
 def validate_parameter(param, param_name):
@@ -351,6 +352,7 @@ def query_sensor_data(uri, collection_name, recording_id=None, sensor_location=N
     print("String Fields:", string_fields)
 
     return df, numeric_fields, string_fields
+
 
 
 # Calculate Sensor Statistics
@@ -552,24 +554,50 @@ def compute_statistics_and_plot(n_clicks, sensor_name, recording_id, sensor_posi
     stats_data = stats_df.to_dict("records")
     stats_columns = [{"name": col, "id": col} for col in stats_df.columns]
 
-    # Prepare plot data for general collections
-    plot_data = pd.DataFrame()
-    for field in string_fields:
-        counts = df[field].value_counts().reset_index()
-        counts.columns = ["Value", "Frequency"]
-        counts["Field"] = field
-        plot_data = pd.concat([plot_data, counts], ignore_index=True)
+    # Prepare plot data for numeric or string fields
+    if string_fields:
+        # Prepare plot data for string fields
+        plot_data = pd.DataFrame()
+        for field in string_fields:
+            counts = df[field].value_counts().reset_index()
+            counts.columns = ["Value", "Frequency"]
+            counts["Field"] = field
+            plot_data = pd.concat([plot_data, counts], ignore_index=True)
 
-    # Create bar chart for general collections
-    fig = px.bar(
-        plot_data,
-        x="Frequency",
-        y="Value",
-        color="Field",
-        orientation="h",
-        title=f"Frequency Distribution of String Fields in {sensor_field}"
-    )
+        # Create bar chart for string fields
+        fig = px.bar(
+            plot_data,
+            x="Frequency",
+            y="Value",
+            color="Field",
+            orientation="h",
+            title=f"Frequency Distribution of String Fields in {sensor_field}"
+        )
+    else:
+        # Prepare plot data for numeric fields
+        plot_data = pd.DataFrame()
+        for field in numeric_fields:
+            field_data = pd.DataFrame({
+                "Field": [field] * len(df),
+                "Value": df[field]
+            })
+            plot_data = pd.concat([plot_data, field_data], ignore_index=True)
+
+        # Create a bar chart with fields on the x-axis and counts on the y-axis
+        if not plot_data.empty:
+            fig = px.histogram(
+                plot_data,
+                x="Field",  # X-axis displays field names
+                color="Field",  # Color-coordinate bars based on field names
+                labels={"x": "Fields", "y": "Count"},
+                title="Count of Values per Field",
+                nbins=len(numeric_fields)  # Ensure proper binning for numeric fields
+            )
+        else:
+            fig = px.bar(title="No Numeric Fields Available")
+
     return stats_data, stats_columns, fig
+
 
 
 
